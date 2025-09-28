@@ -2,6 +2,11 @@
 const res = await fetch("http://localhost:8080/images/random");
 const photos = await res.json();
 
+// Debug logging
+console.log("Photos response:", photos);
+console.log("First photo:", photos[0]);
+console.log("Photo keys:", photos[0] ? Object.keys(photos[0]) : "No photos");
+
 ---
 
 <html lang="en">
@@ -10,12 +15,21 @@ const photos = await res.json();
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
+		<title>Raquira</title>
 	</head>
 	<body>
 		<h1>Raquira</h1>
 		{photos.map(photo => (
-			<img src={photo.url} width="480" />
+			<img src={"https://pub-0654db98da5e47f49578b68f4562e0fa.r2.dev/" + photo.Basename + "_480w.webp"} width="480" />
 		))}
+		
+		<script define:vars={{ photos }}>
+			// Client-side debugging - check browser console
+			console.log("Photos from server:", photos);
+			photos.forEach((photo, index) => {
+				console.log(`Photo ${index}:`, photo);
+				console.log(`Photo ${index} keys:`, Object.keys(photo));
+			});
+		</script>
 	</body>
 </html>
