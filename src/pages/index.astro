@@ -1,4 +1,6 @@
 ---
+import Gallery from "../pages/gallery.astro";
+import "../styles/global.css";
 // Define the type for photo objects from your API
 interface Photo {
 	ID: number;
@@ -9,17 +11,12 @@ interface Photo {
 	Sequence: number;
 	SequenceRaw: string;
 	Rotation: number;
-	// Add other properties as needed based on your API response
 }
 
 const res = await fetch("http://localhost:8080/images/random");
+// TODO: handle if this fails
 const photos: Photo[] = await res.json();
 const baseURL = "https://pub-0654db98da5e47f49578b68f4562e0fa.r2.dev/";
-
-// Debug logging
-console.log("Photos response:", photos);
-console.log("First photo:", photos[0]);
-console.log("Photo keys:", photos[0] ? Object.keys(photos[0]) : "No photos");
 ---
 
 <html lang="en">
@@ -29,95 +26,38 @@ console.log("Photo keys:", photos[0] ? Object.keys(photos[0]) : "No photos");
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
 		<title>Raquira</title>
+		<!-- Google Fonts preconnect for performance -->
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+		<!-- Selected fonts: Poppins for headers, Inter for body -->
+		<link
+			href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+			rel="stylesheet"
+		/>
 	</head>
-	<body>
-		<h1>Raquira</h1>
+	<body class="bg-zinc-950 p-8" style="font-family: 'Inter', sans-serif;">
+		<!-- Main heading using Poppins -->
+		<h1
+			class="text-red-50 text-6xl font-bold mb-8"
+			style="font-family: 'Poppins', sans-serif;"
+		>
+			Raquira
+		</h1>
 
-		{
-			photos.map((photo, index) => {
-				// Debug: log the URLs being generated
-				const webpUrl = `${baseURL}${photo.Basename}_960w.webp`;
-				const jpgUrl = `${baseURL}${photo.Basename}_960w.jpg`;
+		<!-- Sample content using Inter for body text -->
+		<div class="mb-8">
+			<p class="text-gray-300 text-lg mb-4">
+				A curated collection of photography from Raquira, Colombia.
+				Explore the vibrant colors and rich culture through these
+				images.
+			</p>
+		</div>
 
-				if (index === 0) {
-					// Only log for first photo to avoid spam
-					console.log("WebP URL:", webpUrl);
-					console.log("JPG URL:", jpgUrl);
-				}
-
-				return (
-					<picture>
-						{/* WebP sources */}
-						<source
-							type="image/webp"
-							srcset={`${baseURL}${photo.Basename}_480w.webp 480w, ${baseURL}${photo.Basename}_960w.webp 960w, ${baseURL}${photo.Basename}_1600w.webp 1600w, ${baseURL}${photo.Basename}_2560w.webp 2560w`}
-							sizes="(max-width: 600px) 480px, (max-width: 1200px) 960px, (max-width: 1800px) 1600px, 2560px"
-						/>
-
-						{/* JPEG sources as fallback */}
-						<source
-							type="image/jpeg"
-							srcset={`${baseURL}${photo.Basename}_480w.jpg 480w, ${baseURL}${photo.Basename}_960w.jpg 960w, ${baseURL}${photo.Basename}_1600w.jpg 1600w, ${baseURL}${photo.Basename}_2560w.jpg 2560w`}
-							sizes="(max-width: 600px) 480px, (max-width: 1200px) 960px, (max-width: 1800px) 1600px, 2560px"
-						/>
-
-						{/* Fallback <img> - responsive sizing */}
-						<img
-							src={`${baseURL}${photo.Basename}_lqip.jpg`}
-							alt={`Photo ${photo.Basename}`}
-							loading="lazy"
-							decoding="async"
-							style="filter: blur(20px); transition: filter 0.3s ease-out;"
-							onload="this.style.filter='blur(0)';"
-						/>
-					</picture>
-				);
-			})
-		}
-
-		<script define:vars={{ photos }}>
-			// Client-side debugging - check browser console
-			console.log("Photos from server:", photos);
-			photos.forEach((photo, index) => {
-				console.log(`Photo ${index}:`, photo);
-				console.log(`Photo ${index} keys:`, Object.keys(photo));
-			});
-
-			// Test WebP support
-			const webpSupport = document
-				.createElement("canvas")
-				.toDataURL("image/webp")
-				.startsWith("data:image/webp");
-			console.log("WebP supported:", webpSupport);
-
-			// Check what image format is actually being loaded - wait for images to load
-			function checkImageSources() {
-				const pictures = document.querySelectorAll("picture");
-				pictures.forEach((picture, index) => {
-					const img = picture.querySelector("img");
-
-					console.log(`Picture ${index}:`);
-					console.log(
-						`  IMG currentSrc:`,
-						img.currentSrc || "not set yet",
-					);
-					console.log(`  IMG src attribute:`, img.src);
-					console.log(`  IMG complete:`, img.complete);
-					console.log(`  IMG naturalWidth:`, img.naturalWidth);
-				});
-			}
-
-			// Check immediately
-			setTimeout(checkImageSources, 100);
-
-			// Check again after images should be loaded
-			setTimeout(checkImageSources, 2000);
-
-			// Also check when window loads
-			window.addEventListener("load", () => {
-				console.log("--- After window load ---");
-				checkImageSources();
-			});
-		</script>
+		<Gallery />
 	</body>
 </html>
