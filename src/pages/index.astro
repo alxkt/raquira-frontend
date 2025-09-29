@@ -1,22 +1,6 @@
 ---
 import Gallery from "../pages/gallery.astro";
 import "../styles/global.css";
-// Define the type for photo objects from your API
-interface Photo {
-	ID: number;
-	Basename: string;
-	Year: number;
-	Month: number;
-	Day: number;
-	Sequence: number;
-	SequenceRaw: string;
-	Rotation: number;
-}
-
-const res = await fetch("http://localhost:8080/images/random");
-// TODO: handle if this fails
-const photos: Photo[] = await res.json();
-const baseURL = "https://pub-0654db98da5e47f49578b68f4562e0fa.r2.dev/";
 ---
 
 <html lang="en">
