@@ -2,29 +2,28 @@
 interface Photo {
     ID: number;
     Basename: string;
-    Year: number;
-    Month: number;
-    Day: number;
-    Sequence: number;
-    SequenceRaw: string;
-    Rotation: number;
-    available_sizes: string[]; // Array of available sizes TODO: Optional change backend schema to actually include this (currently returning all sizes no matter what)
+    Year: { Int64: number; Valid: boolean } | null;
+    Month: { Int64: number; Valid: boolean } | null;
+    Day: { Int64: number; Valid: boolean } | null;
+    Sequence: { Int64: number; Valid: boolean } | null;
+    SequenceRaw: { String: string; Valid: boolean } | null;
+    Rotation: { Int64: number; Valid: boolean } | null;
+    Width: number;
+    Height: number;
+    AvailableSizes: string; // JSON string of available sizes
 }
 
 const res = await fetch("http://localhost:8080/images/random");
 const photos: Photo[] = await res.json();
 const baseURL = "https://pub-0654db98da5e47f49578b68f4562e0fa.r2.dev/";
 
-// Helper function to build srcset with only available sizes
+// Helper function to build srcset with available sizes
 function buildSrcset(
     basename: string,
     extension: string,
-    availableSizes?: string[],
+    availableSizes: string[],
 ): string {
-    const defaultSizes = ["480w", "960w", "1600w", "2560w"];
-    const sizes = availableSizes || defaultSizes;
-
-    return sizes
+    return availableSizes
         .map((size) => `${baseURL}${basename}_${size}.${extension} ${size}`)
         .join(", ");
 }
@@ -34,6 +33,21 @@ function buildSrcset(
     <div class="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
         {
             photos.map((photo, index) => {
+                // Debug: log the photo object
+                if (index === 0) {
+                    console.log("First photo object:", photo);
+                    console.log("AvailableSizes field:", photo.AvailableSizes);
+                }
+
+                // Parse available sizes from JSON string
+                let availableSizes: string[];
+                try {
+                    availableSizes = JSON.parse(photo.AvailableSizes || '["480w","960w","1600w","2560w"]');
+                } catch (e) {
+                    console.error("Failed to parse AvailableSizes:", photo.AvailableSizes, e);
+                    availableSizes = ["480w", "960w", "1600w", "2560w"];
+                }
+
                 // Debug: log the URLs being generated
                 const webpUrl = `${baseURL}${photo.Basename}_960w.webp`;
                 const jpgUrl = `${baseURL}${photo.Basename}_960w.jpg`;
@@ -52,7 +66,7 @@ function buildSrcset(
                             srcset={buildSrcset(
                                 photo.Basename,
                                 "webp",
-                                photo.available_sizes,
+                                availableSizes,
                             )}
                             sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                         />
@@ -63,17 +77,19 @@ function buildSrcset(
                             srcset={buildSrcset(
                                 photo.Basename,
                                 "jpg",
-                                photo.available_sizes,
+                                availableSizes,
                             )}
                             sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                         />
 
-                        {/* Fallback <img> - responsive sizing */}
+                        {/* Fallback <img> - responsive sizing with dimensions to prevent layout shift */}
                         <img
                             src={`${baseURL}${photo.Basename}_lqip.jpg`}
                             alt={`Photo ${photo.Basename}`}
                             loading="lazy"
                             decoding="async"
+                            width={photo.Width}
+                            height={photo.Height}
                             class="w-full h-auto object-cover transition duration-300 scale-[1.1] hover:scale-[1.12] hover:brightness-110 cursor-pointer"
                             style="filter: blur(20px); transition: filter 0.3s ease-out;"
                             onload="this.style.filter='blur(0)';"
