@@ -13,7 +13,9 @@ interface Photo {
     AvailableSizes: string; // JSON string of available sizes
 }
 
-const res = await fetch("http://localhost:8080/images/random");
+const API_BASE_URL =
+    import.meta.env.PUBLIC_API_BASE_URL || "http://localhost:8080";
+const res = await fetch(`${API_BASE_URL}/images/random`);
 const photos: Photo[] = await res.json();
 const baseURL = "https://pub-0654db98da5e47f49578b68f4562e0fa.r2.dev/";
 
@@ -42,9 +44,16 @@ function buildSrcset(
                 // Parse available sizes from JSON string
                 let availableSizes: string[];
                 try {
-                    availableSizes = JSON.parse(photo.AvailableSizes || '["480w","960w","1600w","2560w"]');
+                    availableSizes = JSON.parse(
+                        photo.AvailableSizes ||
+                            '["480w","960w","1600w","2560w"]',
+                    );
                 } catch (e) {
-                    console.error("Failed to parse AvailableSizes:", photo.AvailableSizes, e);
+                    console.error(
+                        "Failed to parse AvailableSizes:",
+                        photo.AvailableSizes,
+                        e,
+                    );
                     availableSizes = ["480w", "960w", "1600w", "2560w"];
                 }
 
