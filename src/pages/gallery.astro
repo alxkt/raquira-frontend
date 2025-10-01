@@ -13,8 +13,11 @@ interface Photo {
     AvailableSizes: string; // JSON string of available sizes
 }
 
-const API_BASE_URL =
-    import.meta.env.PUBLIC_API_BASE_URL || "http://localhost:8080";
+const USE_LOCAL_BACKEND = import.meta.env.PUBLIC_USE_LOCAL_BACKEND === "true";
+const API_BASE_URL = USE_LOCAL_BACKEND
+    ? "http://localhost:8080"
+    : import.meta.env.PUBLIC_API_BASE_URL ||
+      "https://raquira-5do3.onrender.com";
 const res = await fetch(`${API_BASE_URL}/images/random`);
 const photos: Photo[] = await res.json();
 const baseURL = "https://pub-0654db98da5e47f49578b68f4562e0fa.r2.dev/";
