@@ -1,122 +1,18 @@
 ---
 import Lightbox from "../components/Lightbox.astro";
-
-interface Photo {
-    ID: number;
-    Basename: string;
-    Year: { Int64: number; Valid: boolean } | null;
-    Month: { Int64: number; Valid: boolean } | null;
-    Day: { Int64: number; Valid: boolean } | null;
-    Sequence: { Int64: number; Valid: boolean } | null;
-    SequenceRaw: { String: string; Valid: boolean } | null;
-    Rotation: { Int64: number; Valid: boolean } | null;
-    Width: number;
-    Height: number;
-    AvailableSizes: string; // JSON string of available sizes
-}
+import GalleryComponent from "../components/gallery/Gallery.astro";
+import { fetchRandomPhotos } from "../lib/api";
 
 const USE_LOCAL_BACKEND = import.meta.env.PUBLIC_USE_LOCAL_BACKEND === "true";
 const API_BASE_URL = USE_LOCAL_BACKEND
     ? "http://localhost:8080"
     : import.meta.env.PUBLIC_API_BASE_URL ||
       "https://raquira-5do3.onrender.com";
-const res = await fetch(`${API_BASE_URL}/images/random`);
-const photos: Photo[] = await res.json();
+const photos = await fetchRandomPhotos(API_BASE_URL);
 const baseURL = "https://pub-0654db98da5e47f49578b68f4562e0fa.r2.dev/";
-
-// Helper function to build srcset with available sizes
-function buildSrcset(
-    basename: string,
-    extension: string,
-    availableSizes: string[],
-): string {
-    return availableSizes
-        .map((size) => `${baseURL}${basename}_${size}.${extension} ${size}`)
-        .join(", ");
-}
 ---
 
-<div class="w-full">
-    <div class="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
-        {
-            photos.map((photo, index) => {
-                // Debug: log the photo object
-                if (index === 0) {
-                    console.log("First photo object:", photo);
-                    console.log("AvailableSizes field:", photo.AvailableSizes);
-                }
-
-                // Parse available sizes from JSON string
-                let availableSizes: string[];
-                try {
-                    availableSizes = JSON.parse(
-                        photo.AvailableSizes ||
-                            '["480w","960w","1600w","2560w"]',
-                    );
-                } catch (e) {
-                    console.error(
-                        "Failed to parse AvailableSizes:",
-                        photo.AvailableSizes,
-                        e,
-                    );
-                    availableSizes = ["480w", "960w", "1600w", "2560w"];
-                }
-
-                // Debug: log the URLs being generated
-                const webpUrl = `${baseURL}${photo.Basename}_960w.webp`;
-                const jpgUrl = `${baseURL}${photo.Basename}_960w.jpg`;
-
-                if (index === 0) {
-                    // Only log for first photo to avoid spam
-                    console.log("WebP URL:", webpUrl);
-                    console.log("JPG URL:", jpgUrl);
-                }
-
-                return (
-                    <picture class="break-inside-avoid mb-4 block rounded-lg overflow-hidden">
-                        {/* WebP sources */}
-                        <source
-                            type="image/webp"
-                            srcset={buildSrcset(
-                                photo.Basename,
-                                "webp",
-                                availableSizes,
-                            )}
-                            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                        />
-
-                        {/* JPEG sources as fallback */}
-                        <source
-                            type="image/jpeg"
-                            srcset={buildSrcset(
-                                photo.Basename,
-                                "jpg",
-                                availableSizes,
-                            )}
-                            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                        />
-
-                        {/* Fallback <img> - responsive sizing with dimensions to prevent layout shift */}
-                        <img
-                            id={`gallery-img-${index}`}
-                            data-loaded="false"
-                            src={`${baseURL}${photo.Basename}_lqip.jpg`}
-                            alt={`Photo ${photo.Basename}`}
-                            loading="lazy"
-                            decoding="async"
-                            width={photo.Width}
-                            height={photo.Height}
-                            class="w-full h-auto object-cover transition duration-300 scale-[1.1] hover:scale-[1.12] hover:brightness-110 cursor-pointer"
-                            style="filter: blur(20px); transition: filter 0.3s ease-out;"
-                            onload="this.dataset.loaded='true'; this.style.filter='blur(0)';"
-                            onclick={`openLightbox(${index})`}
-                        />
-                    </picture>
-                );
-            })
-        }
-    </div>
+<div>
+    <GalleryComponent photos={photos} baseURL={baseURL} />
+    <Lightbox photos={photos} baseURL={baseURL} />
 </div>
-
-<!-- Lightbox Component -->
-<Lightbox photos={photos} baseURL={baseURL} />
