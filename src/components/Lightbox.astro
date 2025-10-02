@@ -96,7 +96,7 @@ function formatDate(p: Photo): string {
             <!-- Upgrade layer -->
             <picture
                 id="lb-upgrade"
-                class="absolute inset-0 w-full h-full pointer-events-none opacity-0 transition-opacity duration-300"
+                class="absolute inset-0 w-full h-full opacity-0 transition-opacity duration-300"
             >
                 <source id="lb-upgrade-webp" type="image/webp" />
                 <source id="lb-upgrade-jpg" type="image/jpeg" />
@@ -221,7 +221,35 @@ function formatDate(p: Photo): string {
             gallerySrc = galleryImg.currentSrc || galleryImg.src || null;
         }
         const fallback = `${baseURL}${photo.Basename}_lqip.jpg`;
-        instant.src = gallerySrc || fallback;
+        // Attach a single error handler to avoid broken icon state
+        if (!instant.dataset.errorHandlerAttached) {
+            instant.addEventListener(
+                "error",
+                () => {
+                    // Fallback chain: lqip -> smallest size jpg
+                    const base = `${baseURL}${photo.Basename}`;
+                    const lqip = `${base}_lqip.jpg`;
+                    if (instant.src !== lqip) {
+                        instant.src = lqip;
+                        return;
+                    }
+                    // Try smallest known size if lqip missing
+                    try {
+                        const sizes = JSON.parse(photo.AvailableSizes || "[]");
+                        if (Array.isArray(sizes) && sizes.length) {
+                            const smallest = sizes[0];
+                            const candidate = `${base}_${smallest}.jpg`;
+                            if (instant.src !== candidate)
+                                instant.src = candidate;
+                        }
+                    } catch {}
+                },
+                { passive: true },
+            );
+            instant.dataset.errorHandlerAttached = "true";
+        }
+
+        instant.src = gallerySrc || fallback; // set after handler
         instant.alt = `Photo ${photo.Basename}`;
         // Remove width/height attributes to allow CSS upscaling beyond intrinsic
         instant.removeAttribute("width");
@@ -233,7 +261,10 @@ function formatDate(p: Photo): string {
         upgradePicture.classList.add("opacity-0");
         const upImg = document.getElementById("lb-upgrade-img");
         if (upImg) {
+            // Hide upgrade image to prevent broken placeholder icon
+            upImg.style.display = "none";
             upImg.removeAttribute("src");
+            upImg.alt = "";
         }
         const upW = document.getElementById("lb-upgrade-webp");
         const upJ = document.getElementById("lb-upgrade-jpg");
@@ -333,6 +364,9 @@ function formatDate(p: Photo): string {
             loadedWebp ||
             loadedJpg ||
             `${baseURL}${photo.Basename}_${sizes[sizes.length - 1]}.jpg`;
+
+        // Make sure it's visible only once src is valid
+        upImg.style.display = "block";
 
         // Force a reflow before changing opacity to ensure transition
         void upgradePicture.offsetWidth;
