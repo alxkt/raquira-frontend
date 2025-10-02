@@ -1,0 +1,52 @@
+---
+import Lightbox from "../../components/Lightbox.astro";
+import Gallery from "../../components/gallery/Gallery.astro";
+import { fetchCollectionBySlug, fetchCollections } from "../../lib/api";
+
+export async function getStaticPaths() {
+    const USE_LOCAL_BACKEND =
+        import.meta.env.PUBLIC_USE_LOCAL_BACKEND === "true";
+    const API_BASE_URL = USE_LOCAL_BACKEND
+        ? "http://localhost:8080"
+        : import.meta.env.PUBLIC_API_BASE_URL ||
+          "https://raquira-5do3.onrender.com";
+    try {
+        const cols = await fetchCollections(API_BASE_URL);
+        return cols.map((c) => ({ params: { slug: c.slug } }));
+    } catch (e) {
+        console.error("Failed to prebuild collection paths", e);
+        return [];
+    }
+}
+
+const { slug } = Astro.params;
+const USE_LOCAL_BACKEND = import.meta.env.PUBLIC_USE_LOCAL_BACKEND === "true";
+const API_BASE_URL = USE_LOCAL_BACKEND
+    ? "http://localhost:8080"
+    : import.meta.env.PUBLIC_API_BASE_URL ||
+      "https://raquira-5do3.onrender.com";
+
+const collection = await fetchCollectionBySlug(API_BASE_URL, slug!);
+const photos = collection.photos;
+const baseURL = "https://pub-0654db98da5e47f49578b68f4562e0fa.r2.dev/";
+---
+
+<article class="max-w-5xl mx-auto px-4 py-6">
+    <header class="mb-6">
+        <h1 class="text-3xl font-semibold mb-2">{collection.title}</h1>
+        {
+            collection.description && (
+                <p class="text-zinc-300 leading-relaxed mb-2">
+                    {collection.description}
+                </p>
+            )
+        }
+        {
+            collection.note && (
+                <p class="text-sm text-zinc-500 italic">{collection.note}</p>
+            )
+        }
+    </header>
+    <Gallery photos={photos} baseURL={baseURL} />
+    <Lightbox photos={photos} baseURL={baseURL} />
+</article>

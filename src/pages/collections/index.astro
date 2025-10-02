@@ -1,0 +1,29 @@
+---
+import { fetchCollections } from "../../lib/api";
+
+const USE_LOCAL_BACKEND = import.meta.env.PUBLIC_USE_LOCAL_BACKEND === "true";
+const API_BASE_URL = USE_LOCAL_BACKEND
+    ? "http://localhost:8080"
+    : import.meta.env.PUBLIC_API_BASE_URL ||
+      "https://raquira-5do3.onrender.com";
+
+// This page is static at build, but can be revalidated manually by rerunning build.
+const collections = await fetchCollections(API_BASE_URL);
+---
+
+<h1 class="text-3xl font-semibold mb-6">Collections</h1>
+<ul class="space-y-2">
+    {
+        collections.map((c) => (
+            <li class="border-b border-zinc-700/40 pb-2">
+                <a
+                    class="text-blue-300 hover:text-blue-200 underline"
+                    href={`/collections/${c.slug}`}
+                >
+                    {c.title}
+                </a>
+                {c.note && <p class="text-xs text-zinc-400 mt-1">{c.note}</p>}
+            </li>
+        ))
+    }
+</ul>

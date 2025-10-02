@@ -1,53 +1,11 @@
 ---
-interface WrappedNumber {
-    Int64: number;
-    Valid: boolean;
-}
-interface Photo {
-    ID: number;
-    Basename: string;
-    Year: WrappedNumber | null;
-    Month: WrappedNumber | null;
-    Day: WrappedNumber | null;
-    Width: number;
-    Height: number;
-    AvailableSizes: string;
-}
-interface Props {
+import type { Photo } from "../lib/photos";
+interface LBProps {
     photos: Photo[];
     baseURL: string;
 }
-const { photos, baseURL } = Astro.props;
-
-function parseSizes(raw: string): string[] {
-    try {
-        const arr = JSON.parse(raw || "[]");
-        return Array.isArray(arr) && arr.length
-            ? arr
-            : ["480w", "960w", "1600w", "2560w"];
-    } catch {
-        return ["480w", "960w", "1600w", "2560w"];
-    }
-}
-
-function formatDate(p: Photo): string {
-    const y = p.Year?.Valid ? p.Year.Int64 : null;
-    const m = p.Month?.Valid ? p.Month.Int64 : null;
-    const d = p.Day?.Valid ? p.Day.Int64 : null;
-    if (!y) return "Date unknown";
-    if (y && m && d)
-        return new Date(y, m - 1, d).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        });
-    if (y && m)
-        return new Date(y, m - 1).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-        });
-    return String(y);
-}
+// Accept any incoming photo objects structurally matching Photo; Astro type mismatch earlier came from duplicate interface definitions.
+const { photos, baseURL } = Astro.props as LBProps;
 ---
 
 <div
@@ -122,6 +80,57 @@ function formatDate(p: Photo): string {
     let currentIndex = 0;
     const photoList = photos;
     let upgradeToken = 0; // invalidates in-flight upgrades when navigating
+    let originalBodyOverflow = "";
+    let originalBodyPaddingRight = "";
+    const preloadCache = new Set();
+    let hideInstantTimeoutId = null;
+
+    function parseSizesStr(str) {
+        try {
+            const arr = JSON.parse(str || "[]");
+            return Array.isArray(arr) && arr.length
+                ? arr
+                : ["480w", "960w", "1600w", "2560w"];
+        } catch {
+            return ["480w", "960w", "1600w", "2560w"];
+        }
+    }
+
+    function computePickedLabel(sizes) {
+        const numeric = sizes
+            .map((s) => parseInt(s.replace(/[^0-9]/g, "")))
+            .filter((n) => !isNaN(n));
+        const viewport =
+            Math.max(window.innerWidth, window.innerHeight) *
+            (window.devicePixelRatio || 1);
+        let picked = numeric[0];
+        for (const n of numeric) {
+            if (n >= viewport) {
+                picked = n;
+                break;
+            }
+            picked = n;
+        }
+        return (
+            sizes.find((s) => s.startsWith(String(picked))) ||
+            sizes[sizes.length - 1]
+        );
+    }
+
+    function lockScroll() {
+        const body = document.body;
+        originalBodyOverflow = body.style.overflow;
+        originalBodyPaddingRight = body.style.paddingRight;
+        const scrollBarWidth =
+            window.innerWidth - document.documentElement.clientWidth;
+        if (scrollBarWidth > 0) body.style.paddingRight = scrollBarWidth + "px";
+        body.style.overflow = "hidden";
+    }
+    function unlockScroll() {
+        const body = document.body;
+        body.style.overflow = originalBodyOverflow;
+        body.style.paddingRight = originalBodyPaddingRight;
+    }
 
     // Client-side date formatting function
     function formatDate(photo) {
@@ -153,7 +162,7 @@ function formatDate(p: Photo): string {
             // Use flex only after first frame to avoid layout thrash
             lightbox.classList.add("flex");
         }
-        document.body.style.overflow = "hidden";
+        lockScroll();
         document.addEventListener("keydown", handleKeydown);
 
         showInstantImage();
@@ -178,7 +187,7 @@ function formatDate(p: Photo): string {
             lightbox.classList.add("hidden");
             lightbox.classList.remove("flex");
         }
-        document.body.style.overflow = "";
+        unlockScroll();
         document.removeEventListener("keydown", handleKeydown);
     }
 
@@ -256,6 +265,13 @@ function formatDate(p: Photo): string {
         instant.removeAttribute("height");
         // Reset visibility in case previous upgrade hid it
         instant.style.visibility = "visible";
+        instant.dataset.state = gallerySrc ? "instant-sharp" : "instant-blur";
+        instant.dataset.photoId = String(photo.ID);
+        if (hideInstantTimeoutId) {
+            clearTimeout(hideInstantTimeoutId);
+            hideInstantTimeoutId = null;
+        }
+        // We no longer block or skip the high-res upgrade; we only avoid adding artificial blur if the gallery copy is already sharp.
 
         // Reset upgrade layer
         upgradePicture.classList.add("opacity-0");
@@ -290,31 +306,30 @@ function formatDate(p: Photo): string {
     function startHighResUpgrade(token) {
         const photo = photoList[currentIndex];
         if (!photo) return;
-        let sizes;
-        try {
-            sizes = JSON.parse(photo.AvailableSizes || "[]");
-            if (!Array.isArray(sizes) || !sizes.length)
-                sizes = ["480w", "960w", "1600w", "2560w"];
-        } catch {
-            sizes = ["480w", "960w", "1600w", "2560w"];
+        const sizes = parseSizesStr(photo.AvailableSizes);
+        const pickedLabel = computePickedLabel(sizes);
+        const instant = document.getElementById("lb-instant");
+        let instantSizeMatch = null;
+        if (instant && instant.currentSrc) {
+            const m = instant.currentSrc.match(/_(\d+)w\.(webp|jpg|jpeg)/);
+            if (m) instantSizeMatch = parseInt(m[1], 10);
         }
-        const numericSizes = sizes
-            .map((s) => parseInt(s.replace(/[^0-9]/g, "")))
-            .filter((n) => !isNaN(n));
-        const viewport =
-            Math.max(window.innerWidth, window.innerHeight) *
-            (window.devicePixelRatio || 1);
-        let picked = numericSizes[0];
-        for (const n of numericSizes) {
-            if (n >= viewport) {
-                picked = n;
-                break;
-            }
-            picked = n;
+        const pickedNumeric =
+            parseInt(pickedLabel.replace(/[^0-9]/g, ""), 10) || 0;
+        const instantIsPicked =
+            instant &&
+            instant.currentSrc &&
+            instant.currentSrc.includes("_" + pickedLabel + ".");
+        // If instant already is the picked size, just layer it via applyUpgrade without new network fetch
+        if (instantIsPicked) {
+            applyUpgrade(photo, sizes, undefined, instant.currentSrc);
+            return; // applyUpgrade handles neighbor preload
         }
-        const pickedLabel =
-            sizes.find((s) => s.startsWith(String(picked))) ||
-            sizes[sizes.length - 1];
+        // If instant is higher than picked (unlikely) still proceed with applyUpgrade to establish srcset for responsiveness
+        if (instantSizeMatch && instantSizeMatch > pickedNumeric) {
+            applyUpgrade(photo, sizes, undefined, instant.currentSrc);
+            return;
+        }
 
         const webpCandidate = `${baseURL}${photo.Basename}_${pickedLabel}.webp`;
         const jpgCandidate = `${baseURL}${photo.Basename}_${pickedLabel}.jpg`;
@@ -376,15 +391,48 @@ function formatDate(p: Photo): string {
         const instant = document.getElementById("lb-instant");
         if (instant) {
             // After transition completes, conceal instant layer (keep for quick re-open caching)
-            setTimeout(() => {
+            const localToken = upgradeToken;
+            const currentPhotoId = String(photo.ID);
+            hideInstantTimeoutId = setTimeout(() => {
+                // Only hide if we have not navigated to a different photo and token matches
                 if (
-                    instant &&
+                    upgradeToken === localToken &&
+                    instant.dataset.photoId === currentPhotoId &&
                     upgradePicture.classList.contains("opacity-100")
                 ) {
                     instant.style.visibility = "hidden";
                 }
+                hideInstantTimeoutId = null;
             }, 320);
         }
+
+        // Preload neighbors after upgrade ready
+        preloadNeighbors(currentIndex);
+    }
+
+    function neighborIndex(index, delta) {
+        const len = photoList.length;
+        return (index + delta + len) % len;
+    }
+    function preloadPhoto(idx) {
+        const p = photoList[idx];
+        if (!p) return;
+        const sizes = parseSizesStr(p.AvailableSizes);
+        const label = computePickedLabel(sizes);
+        const cacheKey = p.ID + ":" + label;
+        if (preloadCache.has(cacheKey)) return;
+        preloadCache.add(cacheKey);
+        const probe = new Image();
+        probe.decoding = "async";
+        probe.loading = "eager";
+        probe.src = `${baseURL}${p.Basename}_${label}.webp`;
+        probe.onerror = () => {
+            probe.src = `${baseURL}${p.Basename}_${label}.jpg`;
+        };
+    }
+    function preloadNeighbors(center) {
+        preloadPhoto(neighborIndex(center, 1));
+        preloadPhoto(neighborIndex(center, -1));
     }
 
     window.openLightbox = openLightbox;
