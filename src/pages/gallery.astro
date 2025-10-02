@@ -98,6 +98,8 @@ function buildSrcset(
 
                         {/* Fallback <img> - responsive sizing with dimensions to prevent layout shift */}
                         <img
+                            id={`gallery-img-${index}`}
+                            data-loaded="false"
                             src={`${baseURL}${photo.Basename}_lqip.jpg`}
                             alt={`Photo ${photo.Basename}`}
                             loading="lazy"
@@ -106,7 +108,7 @@ function buildSrcset(
                             height={photo.Height}
                             class="w-full h-auto object-cover transition duration-300 scale-[1.1] hover:scale-[1.12] hover:brightness-110 cursor-pointer"
                             style="filter: blur(20px); transition: filter 0.3s ease-out;"
-                            onload="this.style.filter='blur(0)';"
+                            onload="this.dataset.loaded='true'; this.style.filter='blur(0)';"
                             onclick={`openLightbox(${index})`}
                         />
                     </picture>
