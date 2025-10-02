@@ -1,4 +1,6 @@
 ---
+import Lightbox from "../components/Lightbox.astro";
+
 interface Photo {
     ID: number;
     Basename: string;
@@ -105,6 +107,7 @@ function buildSrcset(
                             class="w-full h-auto object-cover transition duration-300 scale-[1.1] hover:scale-[1.12] hover:brightness-110 cursor-pointer"
                             style="filter: blur(20px); transition: filter 0.3s ease-out;"
                             onload="this.style.filter='blur(0)';"
+                            onclick={`openLightbox(${index})`}
                         />
                     </picture>
                 );
@@ -112,3 +115,6 @@ function buildSrcset(
         }
     </div>
 </div>
+
+<!-- Lightbox Component -->
+<Lightbox photos={photos} baseURL={baseURL} />
