@@ -1,13 +1,30 @@
 ---
 import Lightbox from "../../components/gallery/Lightbox.astro";
 import Gallery from "../../components/gallery/Gallery.astro";
-import { fetchCollectionBySlug, type CollectionFull } from "../../lib/api";
+import {
+    fetchCollectionBySlug,
+    fetchCollections,
+    type CollectionFull,
+} from "../../lib/api";
+import type { Photo } from "../../lib/photos";
 
-export const prerender = false; // SSR: dynamic collection fetch
+// Static generation: enumerate all collection slugs at build time
+export async function getStaticPaths() {
+    const API_BASE_URL =
+        import.meta.env.PUBLIC_USE_LOCAL_BACKEND === "true"
+            ? "http://localhost:8080"
+            : import.meta.env.PUBLIC_API_BASE_URL;
+    try {
+        const list = await fetchCollections(API_BASE_URL);
+        return list.map((c) => ({ params: { slug: c.slug } }));
+    } catch (e) {
+        console.error("getStaticPaths collections fetch failed", e);
+        return [];
+    }
+}
 
 const { slug } = Astro.params;
 let collection: CollectionFull | null = null;
-import type { Photo } from "../../lib/photos";
 let photos: Photo[] = [];
 const baseURL = import.meta.env.PUBLIC_IMAGE_BASE_URL;
 try {

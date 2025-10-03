@@ -1,6 +1,5 @@
 ---
 import { fetchCollections, type CollectionMeta } from "../../lib/api";
-export const prerender = false; // SSR: fetch fresh collections each request
 let collections: CollectionMeta[] = [];
 try {
     const API_BASE_URL = import.meta.env.PUBLIC_USE_LOCAL_BACKEND
