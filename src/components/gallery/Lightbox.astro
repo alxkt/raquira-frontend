@@ -1,14 +1,11 @@
 ---
-import type { Photo } from "../lib/photos";
-import { parseSizes, computePickedLabel } from "../lib/photos";
+import type { Photo } from "../../lib/photos";
 interface LBProps {
     photos: Photo[];
     baseURL?: string;
 }
 const { photos, baseURL: passedBase } = Astro.props as LBProps;
 const baseURL = passedBase || import.meta.env.PUBLIC_IMAGE_BASE_URL;
-
-// Precompute date strings server-side to avoid duplicating logic client-side
 function serverFormatDate(p: Photo): string {
     const anyP: any = p;
     const y = anyP.Year?.Valid ? anyP.Year.Int64 : (anyP.YearValue ?? null);
@@ -37,28 +34,24 @@ const photoDates = photos.map(serverFormatDate);
     onclick="window.closeLightbox(event)"
 >
     <div class="absolute inset-0 bg-black/90"></div>
-
-    <!-- Controls -->
     <button
         aria-label="Close"
         onclick="window.closeLightbox()"
-        class="absolute top-4 right-4 text-white text-3xl font-light hover:text-zinc-300"
+        class="absolute top-4 z-80 right-4 text-white text-3xl font-light hover:text-zinc-300"
         >×</button
     >
     <button
         aria-label="Previous"
         onclick="window.navigateLightbox(-1)"
-        class="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl font-light hover:text-zinc-300 select-none"
+        class="absolute left-4 z-80 top-1/2 -translate-y-1/2 text-white text-4xl font-light hover:text-zinc-300 select-none"
         >‹</button
     >
     <button
         aria-label="Next"
         onclick="window.navigateLightbox(1)"
-        class="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl font-light hover:text-zinc-300 select-none"
+        class="absolute right-4 z-80 top-1/2 -translate-y-1/2 text-white text-4xl font-light hover:text-zinc-300 select-none"
         >›</button
     >
-
-    <!-- Image Stage (fills viewport) -->
     <div
         class="relative z-10 flex items-center justify-center w-full h-full p-4 select-none"
     >
@@ -66,7 +59,6 @@ const photoDates = photos.map(serverFormatDate);
             id="lb-stage"
             class="relative w-full h-full flex items-center justify-center"
         >
-            <!-- Instant bitmap exactly from gallery -->
             <img
                 id="lb-instant"
                 class="absolute inset-0 w-full h-full object-contain select-none"
@@ -74,7 +66,6 @@ const photoDates = photos.map(serverFormatDate);
                 decoding="async"
                 draggable="false"
             />
-            <!-- Upgrade layer -->
             <picture
                 id="lb-upgrade"
                 class="absolute inset-0 w-full h-full opacity-0 transition-opacity duration-300"
@@ -98,19 +89,14 @@ const photoDates = photos.map(serverFormatDate);
         </div>
     </div>
 </div>
-
 <script define:vars={{ photos, baseURL, photoDates }}>
     let currentIndex = 0;
     const photoList = photos;
-    let upgradeToken = 0; // invalidates in-flight upgrades when navigating
+    let upgradeToken = 0;
     let originalBodyOverflow = "";
     let originalBodyPaddingRight = "";
     const preloadCache = new Set();
     let hideInstantTimeoutId = null;
-
-    // Using shared helpers: parseSizes, computePickedLabel
-    // NOTE: Imported helpers run only on the server (frontmatter). We must re-declare
-    // minimal browser versions here for the client bundle.
     function parseSizes(raw) {
         try {
             const arr = JSON.parse(raw || "[]");
@@ -121,7 +107,7 @@ const photoDates = photos.map(serverFormatDate);
             return ["480w", "960w", "1600w", "2560w"];
         }
     }
-    function computePickedLabel(sizes) {
+    function selectBestSize(sizes) {
         if (!sizes || !sizes.length) return "960w";
         const nums = sizes
             .map((s) => parseInt(s.replace(/[^0-9]/g, ""), 10))
@@ -143,7 +129,6 @@ const photoDates = photos.map(serverFormatDate);
             sizes[sizes.length - 1]
         );
     }
-
     function lockScroll() {
         const body = document.body;
         originalBodyOverflow = body.style.overflow;
@@ -158,26 +143,19 @@ const photoDates = photos.map(serverFormatDate);
         body.style.overflow = originalBodyOverflow;
         body.style.paddingRight = originalBodyPaddingRight;
     }
-
-    // Date strings precomputed server-side (photoDates)
-
     function openLightbox(index) {
         currentIndex = index;
         updateDate();
-
         const lightbox = document.getElementById("lightbox");
         if (lightbox) {
             lightbox.classList.remove("hidden");
-            // Use flex only after first frame to avoid layout thrash
             lightbox.classList.add("flex");
         }
         lockScroll();
         document.addEventListener("keydown", handleKeydown);
-
         showInstantImage();
         scheduleUpgrade();
     }
-
     function closeLightbox(event) {
         if (
             event &&
@@ -199,7 +177,6 @@ const photoDates = photos.map(serverFormatDate);
         unlockScroll();
         document.removeEventListener("keydown", handleKeydown);
     }
-
     function navigateLightbox(direction) {
         currentIndex += direction;
         if (currentIndex < 0) currentIndex = photoList.length - 1;
@@ -209,48 +186,38 @@ const photoDates = photos.map(serverFormatDate);
         showInstantImage();
         scheduleUpgrade();
     }
-
     function handleKeydown(e) {
         if (e.key === "Escape") closeLightbox();
         if (e.key === "ArrowLeft") navigateLightbox(-1);
         if (e.key === "ArrowRight") navigateLightbox(1);
     }
-
     function updateDate() {
         const dateEl = document.getElementById("lightbox-date");
-        if (dateEl) {
-            dateEl.textContent = photoDates[currentIndex] || "";
-        }
+        if (dateEl) dateEl.textContent = photoDates[currentIndex] || "";
     }
-
     function showInstantImage() {
         const photo = photoList[currentIndex];
         const instant = document.getElementById("lb-instant");
         const upgradePicture = document.getElementById("lb-upgrade");
         if (!(instant && upgradePicture)) return;
-
         const galleryImg = document.getElementById(
             `gallery-img-${currentIndex}`,
         );
         let gallerySrc = null;
         if (galleryImg instanceof HTMLImageElement) {
-            // Use currentSrc when available to respect srcset selection
             gallerySrc = galleryImg.currentSrc || galleryImg.src || null;
         }
         const fallback = `${baseURL}${photo.Basename}_lqip.jpg`;
-        // Attach a single error handler to avoid broken icon state
         if (!instant.dataset.errorHandlerAttached) {
             instant.addEventListener(
                 "error",
                 () => {
-                    // Fallback chain: lqip -> smallest size jpg
                     const base = `${baseURL}${photo.Basename}`;
                     const lqip = `${base}_lqip.jpg`;
                     if (instant.src !== lqip) {
                         instant.src = lqip;
                         return;
                     }
-                    // Try smallest known size if lqip missing
                     try {
                         const sizes = JSON.parse(photo.AvailableSizes || "[]");
                         if (Array.isArray(sizes) && sizes.length) {
@@ -265,13 +232,10 @@ const photoDates = photos.map(serverFormatDate);
             );
             instant.dataset.errorHandlerAttached = "true";
         }
-
-        instant.src = gallerySrc || fallback; // set after handler
+        instant.src = gallerySrc || fallback;
         instant.alt = `Photo ${photo.Basename}`;
-        // Remove width/height attributes to allow CSS upscaling beyond intrinsic
         instant.removeAttribute("width");
         instant.removeAttribute("height");
-        // Reset visibility in case previous upgrade hid it
         instant.style.visibility = "visible";
         instant.dataset.state = gallerySrc ? "instant-sharp" : "instant-blur";
         instant.dataset.photoId = String(photo.ID);
@@ -279,13 +243,9 @@ const photoDates = photos.map(serverFormatDate);
             clearTimeout(hideInstantTimeoutId);
             hideInstantTimeoutId = null;
         }
-        // We no longer block or skip the high-res upgrade; we only avoid adding artificial blur if the gallery copy is already sharp.
-
-        // Reset upgrade layer
         upgradePicture.classList.add("opacity-0");
         const upImg = document.getElementById("lb-upgrade-img");
         if (upImg) {
-            // Hide upgrade image to prevent broken placeholder icon
             upImg.style.display = "none";
             upImg.removeAttribute("src");
             upImg.alt = "";
@@ -295,27 +255,23 @@ const photoDates = photos.map(serverFormatDate);
         if (upW) upW.removeAttribute("srcset");
         if (upJ) upJ.removeAttribute("srcset");
     }
-
     function scheduleUpgrade() {
         const localToken = ++upgradeToken;
-        // Two RAFs to guarantee first paint happened with instant image
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-                if (localToken !== upgradeToken) return; // navigation happened
+                if (localToken !== upgradeToken) return;
                 startHighResUpgrade(localToken);
             });
         });
     }
-
     function cancelUpgrade() {
-        upgradeToken++; // invalidate
+        upgradeToken++;
     }
-
     function startHighResUpgrade(token) {
         const photo = photoList[currentIndex];
         if (!photo) return;
         const sizes = parseSizes(photo.AvailableSizes);
-        const pickedLabel = computePickedLabel(sizes);
+        const pickedLabel = selectBestSize(sizes);
         const instant = document.getElementById("lb-instant");
         let instantSizeMatch = null;
         if (instant && instant.currentSrc) {
@@ -328,23 +284,19 @@ const photoDates = photos.map(serverFormatDate);
             instant &&
             instant.currentSrc &&
             instant.currentSrc.includes("_" + pickedLabel + ".");
-        // If instant already is the picked size, just layer it via applyUpgrade without new network fetch
         if (instantIsPicked) {
             applyUpgrade(photo, sizes, undefined, instant.currentSrc);
-            return; // applyUpgrade handles neighbor preload
+            return;
         }
-        // If instant is higher than picked (unlikely) still proceed with applyUpgrade to establish srcset for responsiveness
         if (instantSizeMatch && instantSizeMatch > pickedNumeric) {
             applyUpgrade(photo, sizes, undefined, instant.currentSrc);
             return;
         }
-
         const webpCandidate = `${baseURL}${photo.Basename}_${pickedLabel}.webp`;
         const jpgCandidate = `${baseURL}${photo.Basename}_${pickedLabel}.jpg`;
-
         const preloader = new Image();
         preloader.onload = () => {
-            if (token !== upgradeToken) return; // stale
+            if (token !== upgradeToken) return;
             applyUpgrade(
                 photo,
                 sizes,
@@ -360,16 +312,14 @@ const photoDates = photos.map(serverFormatDate);
             };
             jpgLoader.src = jpgCandidate;
         };
-        preloader.src = webpCandidate; // try webp first
+        preloader.src = webpCandidate;
     }
-
     function applyUpgrade(photo, sizes, loadedWebp, loadedJpg) {
         const upgradePicture = document.getElementById("lb-upgrade");
         const upWebp = document.getElementById("lb-upgrade-webp");
         const upJpg = document.getElementById("lb-upgrade-jpg");
         const upImg = document.getElementById("lb-upgrade-img");
         if (!(upgradePicture && upWebp && upJpg && upImg)) return;
-
         const webpSrcset = sizes
             .map((s) => `${baseURL}${photo.Basename}_${s}.webp ${s}`)
             .join(", ");
@@ -387,22 +337,15 @@ const photoDates = photos.map(serverFormatDate);
             loadedWebp ||
             loadedJpg ||
             `${baseURL}${photo.Basename}_${sizes[sizes.length - 1]}.jpg`;
-
-        // Make sure it's visible only once src is valid
         upImg.style.display = "block";
-
-        // Force a reflow before changing opacity to ensure transition
         void upgradePicture.offsetWidth;
         upgradePicture.classList.remove("opacity-0");
         upgradePicture.classList.add("opacity-100");
-
         const instant = document.getElementById("lb-instant");
         if (instant) {
-            // After transition completes, conceal instant layer (keep for quick re-open caching)
             const localToken = upgradeToken;
             const currentPhotoId = String(photo.ID);
             hideInstantTimeoutId = setTimeout(() => {
-                // Only hide if we have not navigated to a different photo and token matches
                 if (
                     upgradeToken === localToken &&
                     instant.dataset.photoId === currentPhotoId &&
@@ -413,11 +356,8 @@ const photoDates = photos.map(serverFormatDate);
                 hideInstantTimeoutId = null;
             }, 320);
         }
-
-        // Preload neighbors after upgrade ready
         preloadNeighbors(currentIndex);
     }
-
     function neighborIndex(index, delta) {
         const len = photoList.length;
         return (index + delta + len) % len;
@@ -426,7 +366,7 @@ const photoDates = photos.map(serverFormatDate);
         const p = photoList[idx];
         if (!p) return;
         const sizes = parseSizes(p.AvailableSizes);
-        const label = computePickedLabel(sizes);
+        const label = selectBestSize(sizes);
         const cacheKey = p.ID + ":" + label;
         if (preloadCache.has(cacheKey)) return;
         preloadCache.add(cacheKey);
@@ -442,7 +382,6 @@ const photoDates = photos.map(serverFormatDate);
         preloadPhoto(neighborIndex(center, 1));
         preloadPhoto(neighborIndex(center, -1));
     }
-
     window.openLightbox = openLightbox;
     window.closeLightbox = closeLightbox;
     window.navigateLightbox = navigateLightbox;

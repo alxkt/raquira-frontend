@@ -1,13 +1,10 @@
 ---
 import { fetchCollections } from "../../lib/api";
 
-const USE_LOCAL_BACKEND = import.meta.env.PUBLIC_USE_LOCAL_BACKEND === "true";
-const API_BASE_URL = USE_LOCAL_BACKEND
+const API_BASE_URL = import.meta.env.PUBLIC_USE_LOCAL_BACKEND
     ? "http://localhost:8080"
-    : import.meta.env.PUBLIC_API_BASE_URL ||
-      "https://raquira-5do3.onrender.com";
+    : import.meta.env.PUBLIC_API_BASE_URL;
 
-// This page is static at build, but can be revalidated manually by rerunning build.
 const collections = await fetchCollections(API_BASE_URL);
 ---
 

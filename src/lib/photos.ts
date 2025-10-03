@@ -35,7 +35,7 @@ export function buildSrcset(baseURL: string, basename: string, ext: string, size
     return sizes.map(size => `${baseURL}${basename}_${size}.${ext} ${size}`).join(', ');
 }
 
-export function computePickedLabel(sizes: string[], viewport?: { w: number; h: number; dpr: number }): string {
+export function selectBestSize(sizes: string[], viewport?: { w: number; h: number; dpr: number }): string {
     if (!sizes.length) return '960w';
     const numbers = sizes.map(s => parseInt(s.replace(/[^0-9]/g, ''), 10)).filter(n => !isNaN(n));
     if (!numbers.length) return sizes[0];
