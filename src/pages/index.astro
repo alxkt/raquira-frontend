@@ -1,8 +1,8 @@
 ---
 import RandomGallery from "../components/gallery/RandomGallery.astro";
 import "../styles/global.css";
----
-
+// TEMP: Make this page SSR so random photos are fetched per request (avoids browser CORS for now)
+export const prerender = false;
 ---
 
 <html lang="en">

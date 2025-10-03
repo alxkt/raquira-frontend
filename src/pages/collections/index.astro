@@ -1,11 +1,15 @@
 ---
-import { fetchCollections } from "../../lib/api";
-
-const API_BASE_URL = import.meta.env.PUBLIC_USE_LOCAL_BACKEND
-    ? "http://localhost:8080"
-    : import.meta.env.PUBLIC_API_BASE_URL;
-
-const collections = await fetchCollections(API_BASE_URL);
+import { fetchCollections, type CollectionMeta } from "../../lib/api";
+export const prerender = false; // SSR: fetch fresh collections each request
+let collections: CollectionMeta[] = [];
+try {
+    const API_BASE_URL = import.meta.env.PUBLIC_USE_LOCAL_BACKEND
+        ? "http://localhost:8080"
+        : import.meta.env.PUBLIC_API_BASE_URL;
+    collections = await fetchCollections(API_BASE_URL);
+} catch (e) {
+    console.error("Collections fetch failed", e);
+}
 ---
 
 <h1 class="text-3xl font-semibold mb-6">Collections</h1>
