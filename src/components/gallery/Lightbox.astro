@@ -50,13 +50,13 @@ const photoDates = photos.map(serverFormatDate);
     </button>
     <button
         aria-label="Previous"
-        onclick="event.stopPropagation(); window.navigateLightbox(-1)"
+        onclick="((e) => { e.stopPropagation(); window.navigateLightbox(-1); })(arguments[0])"
         class="absolute left-6 z-[80] top-1/2 -translate-y-1/2 text-white hover:bg-zinc-500/60 rounded-full p-2"
         ><ChevronLeft class="w-6 h-6" /></button
     >
     <button
         aria-label="Next"
-        onclick="event.stopPropagation(); window.navigateLightbox(1)"
+        onclick="((e) => { e.stopPropagation(); window.navigateLightbox(1); })(arguments[0])"
         class="absolute right-6 z-[80] top-1/2 -translate-y-1/2 text-white hover:bg-zinc-500/60 rounded-full p-2"
         ><ChevronRight class="w-6 h-6" /></button
     >
