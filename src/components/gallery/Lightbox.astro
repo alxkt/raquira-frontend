@@ -1,5 +1,12 @@
 ---
 import type { Photo } from "../../lib/photos";
+import {
+    ChevronLeft,
+    ChevronRight,
+    X,
+    ExternalLink,
+    UserRoundSearch,
+} from "@lucide/astro";
 interface LBProps {
     photos: Photo[];
     baseURL?: string;
@@ -37,27 +44,28 @@ const photoDates = photos.map(serverFormatDate);
     <button
         aria-label="Close"
         onclick="window.closeLightbox()"
-        class="absolute top-4 z-80 right-4 text-white text-3xl font-light hover:text-zinc-300"
-        >×</button
+        class="absolute top-4 z-[80] right-4 text-white hover:bg-zinc-500/60 rounded-full p-2"
     >
+        <X class="w-6 h-6" />
+    </button>
     <button
         aria-label="Previous"
-        onclick="window.navigateLightbox(-1)"
-        class="absolute left-4 z-80 top-1/2 -translate-y-1/2 text-white text-4xl font-light hover:text-zinc-300 select-none"
-        >‹</button
+        onclick="event.stopPropagation(); window.navigateLightbox(-1)"
+        class="absolute left-6 z-[80] top-1/2 -translate-y-1/2 text-white hover:bg-zinc-500/60 rounded-full p-2"
+        ><ChevronLeft class="w-6 h-6" /></button
     >
     <button
         aria-label="Next"
-        onclick="window.navigateLightbox(1)"
-        class="absolute right-4 z-80 top-1/2 -translate-y-1/2 text-white text-4xl font-light hover:text-zinc-300 select-none"
-        >›</button
+        onclick="event.stopPropagation(); window.navigateLightbox(1)"
+        class="absolute right-6 z-[80] top-1/2 -translate-y-1/2 text-white hover:bg-zinc-500/60 rounded-full p-2"
+        ><ChevronRight class="w-6 h-6" /></button
     >
     <div
-        class="relative z-10 flex items-center justify-center w-full h-full p-4 select-none"
+        class="relative z-10 flex items-center justify-center w-full h-full p-0 select-none"
     >
         <div
             id="lb-stage"
-            class="relative w-full h-full flex items-center justify-center"
+            class="relative w-full h-full flex items-center justify-center overflow-hidden"
         >
             <img
                 id="lb-instant"
@@ -81,11 +89,36 @@ const photoDates = photos.map(serverFormatDate);
                 />
             </picture>
         </div>
-        <div
-            class="absolute bottom-4 right-4 bg-black/60 rounded-md px-3 py-2 pointer-events-none"
-        >
-            <span id="lightbox-date" class="text-white text-sm font-medium"
-            ></span>
+        <!-- Bottom metadata & controls bar -->
+        <div class="pointer-events-none absolute inset-x-0 bottom-0">
+            <div
+                class="pointer-events-auto w-full flex items-center gap-4 px-4 pt-16 pb-6 bg-gradient-to-t from-zinc-950/100 via-zinc-950/80 to-transparent"
+            >
+                <div
+                    id="lb-meta-date"
+                    class="text-orange-50 text-xs sm:text-sm shrink-0"
+                >
+                </div>
+                <div
+                    id="lb-meta-description"
+                    class="text-orange-50 text-xs sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis flex-1"
+                >
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button
+                        aria-label="Share photo"
+                        onclick="window.shareCurrentPhoto()"
+                        class="text-orange-50 p-1 rounded hover:text-orange-200 hover:scale-110 transition-transform"
+                        ><UserRoundSearch /></button
+                    >
+                    <button
+                        aria-label="Open photo in new tab"
+                        onclick="window.openCurrentPhotoInNewTab()"
+                        class="text-orange-50 p-1 rounded hover:text-orange-200 hover:scale-110 transition-transform"
+                        ><ExternalLink /></button
+                    >
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -145,7 +178,7 @@ const photoDates = photos.map(serverFormatDate);
     }
     function openLightbox(index) {
         currentIndex = index;
-        updateDate();
+        updateMeta();
         const lightbox = document.getElementById("lightbox");
         if (lightbox) {
             lightbox.classList.remove("hidden");
@@ -181,7 +214,7 @@ const photoDates = photos.map(serverFormatDate);
         currentIndex += direction;
         if (currentIndex < 0) currentIndex = photoList.length - 1;
         else if (currentIndex >= photoList.length) currentIndex = 0;
-        updateDate();
+        updateMeta();
         cancelUpgrade();
         showInstantImage();
         scheduleUpgrade();
@@ -191,9 +224,14 @@ const photoDates = photos.map(serverFormatDate);
         if (e.key === "ArrowLeft") navigateLightbox(-1);
         if (e.key === "ArrowRight") navigateLightbox(1);
     }
-    function updateDate() {
-        const dateEl = document.getElementById("lightbox-date");
+    function updateMeta() {
+        const dateEl = document.getElementById("lb-meta-date");
         if (dateEl) dateEl.textContent = photoDates[currentIndex] || "";
+        const descEl = document.getElementById("lb-meta-description");
+        const p = photoList[currentIndex];
+        const fallbackDesc =
+            "Woman with traditional hat sits to make pottery in the village square";
+        if (descEl) descEl.textContent = (p && p.Description) || fallbackDesc;
     }
     function showInstantImage() {
         const photo = photoList[currentIndex];
@@ -382,7 +420,47 @@ const photoDates = photos.map(serverFormatDate);
         preloadPhoto(neighborIndex(center, 1));
         preloadPhoto(neighborIndex(center, -1));
     }
+    function buildHighResURL(photo) {
+        if (!photo) return null;
+        try {
+            const sizes = JSON.parse(photo.AvailableSizes || "[]");
+            if (Array.isArray(sizes) && sizes.length) {
+                const largest = sizes[sizes.length - 1];
+                return `${baseURL}${photo.Basename}_${largest}.jpg`;
+            }
+        } catch {}
+        return `${baseURL}${photo.Basename}_lqip.jpg`;
+    }
+    function openCurrentPhotoInNewTab() {
+        const photo = photoList[currentIndex];
+        const url = buildHighResURL(photo);
+        if (url) window.open(url, "_blank", "noopener,noreferrer");
+    }
+    async function shareCurrentPhoto() {
+        const photo = photoList[currentIndex];
+        const url = buildHighResURL(photo);
+        if (!url) return;
+        const shareData = {
+            title: `Photo ${photo.Basename}`,
+            text: (photo && photo.Description) || "",
+            url,
+        };
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch {}
+        } else if (navigator.clipboard) {
+            try {
+                await navigator.clipboard.writeText(url);
+                // Optional: could add a transient UI indicator later
+            } catch {}
+        } else {
+            prompt("Copy photo URL", url); // fallback
+        }
+    }
     window.openLightbox = openLightbox;
     window.closeLightbox = closeLightbox;
     window.navigateLightbox = navigateLightbox;
+    window.openCurrentPhotoInNewTab = openCurrentPhotoInNewTab;
+    window.shareCurrentPhoto = shareCurrentPhoto;
 </script>
