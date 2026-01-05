@@ -16,6 +16,7 @@ Thumbs.db
 
 # Dev
 .vscode/
+.github/
 
 # logs
 npm-debug.log*
