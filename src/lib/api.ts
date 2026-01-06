@@ -1,16 +1,15 @@
-import type { Photo, RawPhoto } from './photos';
-import { normalizePhoto } from './photos';
+import type { Photo } from './photos';
 
 export interface CollectionMeta {
     id: number;
-    slug: string;
-    title: string;
+    name: string;
     note?: string | null;
     description?: string | null;
-    coverPhotoID?: number | null;
+    hidden?: boolean;
 }
 
-export interface CollectionFull extends CollectionMeta {
+export interface CollectionFull {
+    meta: CollectionMeta;
     photos: Photo[];
 }
 
@@ -21,8 +20,7 @@ export async function fetchJSON<T>(url: string): Promise<T> {
 }
 
 export async function fetchRandomPhotos(apiBase: string): Promise<Photo[]> {
-    const raw = await fetchJSON<RawPhoto[]>(`${apiBase}/images/random`);
-    return raw.map(normalizePhoto);
+    return fetchJSON<Photo[]>(`${apiBase}/images/random`);
 }
 
 export async function fetchCollections(apiBase: string): Promise<CollectionMeta[]> {
@@ -30,6 +28,5 @@ export async function fetchCollections(apiBase: string): Promise<CollectionMeta[
 }
 
 export async function fetchCollectionBySlug(apiBase: string, slug: string): Promise<CollectionFull> {
-    const data = await fetchJSON<{ meta: CollectionMeta; photos: RawPhoto[] }>(`${apiBase}/collections/${slug}`);
-    return { ...data.meta, photos: data.photos.map(normalizePhoto) };
+    return fetchJSON<CollectionFull>(`${apiBase}/collections/${slug}`);
 }

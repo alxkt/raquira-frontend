@@ -14,10 +14,9 @@ interface LBProps {
 const { photos, baseURL: passedBase } = Astro.props as LBProps;
 const baseURL = passedBase || import.meta.env.PUBLIC_IMAGE_BASE_URL;
 function serverFormatDate(p: Photo): string {
-    const anyP: any = p;
-    const y = anyP.Year?.Valid ? anyP.Year.Int64 : (anyP.YearValue ?? null);
-    const m = anyP.Month?.Valid ? anyP.Month.Int64 : (anyP.MonthValue ?? null);
-    const d = anyP.Day?.Valid ? anyP.Day.Int64 : (anyP.DayValue ?? null);
+    const y = p.year ?? null;
+    const m = p.month ?? null;
+    const d = p.day ?? null;
     if (!y) return "Date unknown";
     if (y && m && d)
         return new Date(y, m - 1, d).toLocaleDateString("en-US", {
@@ -280,19 +279,19 @@ const photoDates = photos.map(serverFormatDate);
         if (galleryImg instanceof HTMLImageElement) {
             gallerySrc = galleryImg.currentSrc || galleryImg.src || null;
         }
-        const fallback = `${baseURL}${photo.Basename}_lqip.jpg`;
+        const fallback = `${baseURL}${photo.basename}_lqip.jpg`;
         if (!instant.dataset.errorHandlerAttached) {
             instant.addEventListener(
                 "error",
                 () => {
-                    const base = `${baseURL}${photo.Basename}`;
+                    const base = `${baseURL}${photo.basename}`;
                     const lqip = `${base}_lqip.jpg`;
                     if (instant.src !== lqip) {
                         instant.src = lqip;
                         return;
                     }
                     try {
-                        const sizes = JSON.parse(photo.AvailableSizes || "[]");
+                        const sizes = JSON.parse(photo.availableSizes || "[]");
                         if (Array.isArray(sizes) && sizes.length) {
                             const smallest = sizes[0];
                             const candidate = `${base}_${smallest}.jpg`;
@@ -306,12 +305,12 @@ const photoDates = photos.map(serverFormatDate);
             instant.dataset.errorHandlerAttached = "true";
         }
         instant.src = gallerySrc || fallback;
-        instant.alt = `Photo ${photo.Basename}`;
+        instant.alt = `Photo ${photo.basename}`;
         instant.removeAttribute("width");
         instant.removeAttribute("height");
         instant.style.visibility = "visible";
         instant.dataset.state = gallerySrc ? "instant-sharp" : "instant-blur";
-        instant.dataset.photoId = String(photo.ID);
+        instant.dataset.photoId = String(photo.id);
         if (hideInstantTimeoutId) {
             clearTimeout(hideInstantTimeoutId);
             hideInstantTimeoutId = null;
@@ -343,7 +342,7 @@ const photoDates = photos.map(serverFormatDate);
     function startHighResUpgrade(token) {
         const photo = photoList[currentIndex];
         if (!photo) return;
-        const sizes = parseSizes(photo.AvailableSizes);
+        const sizes = parseSizes(photo.availableSizes);
         const pickedLabel = selectBestSize(sizes);
         const instant = document.getElementById("lb-instant");
         let instantSizeMatch = null;
@@ -365,8 +364,8 @@ const photoDates = photos.map(serverFormatDate);
             applyUpgrade(photo, sizes, undefined, instant.currentSrc);
             return;
         }
-        const webpCandidate = `${baseURL}${photo.Basename}_${pickedLabel}.webp`;
-        const jpgCandidate = `${baseURL}${photo.Basename}_${pickedLabel}.jpg`;
+        const webpCandidate = `${baseURL}${photo.basename}_${pickedLabel}.webp`;
+        const jpgCandidate = `${baseURL}${photo.basename}_${pickedLabel}.jpg`;
         const preloader = new Image();
         preloader.onload = () => {
             if (token !== upgradeToken) return;
@@ -394,22 +393,22 @@ const photoDates = photos.map(serverFormatDate);
         const upImg = document.getElementById("lb-upgrade-img");
         if (!(upgradePicture && upWebp && upJpg && upImg)) return;
         const webpSrcset = sizes
-            .map((s) => `${baseURL}${photo.Basename}_${s}.webp ${s}`)
+            .map((s) => `${baseURL}${photo.basename}_${s}.webp ${s}`)
             .join(", ");
         const jpgSrcset = sizes
-            .map((s) => `${baseURL}${photo.Basename}_${s}.jpg ${s}`)
+            .map((s) => `${baseURL}${photo.basename}_${s}.jpg ${s}`)
             .join(", ");
         upWebp.setAttribute("srcset", webpSrcset);
         upWebp.setAttribute("sizes", "100vw");
         upJpg.setAttribute("srcset", jpgSrcset);
         upJpg.setAttribute("sizes", "100vw");
-        upImg.alt = `Photo ${photo.Basename}`;
+        upImg.alt = `Photo ${photo.basename}`;
         upImg.removeAttribute("width");
         upImg.removeAttribute("height");
         upImg.src =
             loadedWebp ||
             loadedJpg ||
-            `${baseURL}${photo.Basename}_${sizes[sizes.length - 1]}.jpg`;
+            `${baseURL}${photo.basename}_${sizes[sizes.length - 1]}.jpg`;
         upImg.style.display = "block";
         void upgradePicture.offsetWidth;
         upgradePicture.classList.remove("opacity-0");
@@ -417,7 +416,7 @@ const photoDates = photos.map(serverFormatDate);
         const instant = document.getElementById("lb-instant");
         if (instant) {
             const localToken = upgradeToken;
-            const currentPhotoId = String(photo.ID);
+            const currentPhotoId = String(photo.id);
             hideInstantTimeoutId = setTimeout(() => {
                 if (
                     upgradeToken === localToken &&
@@ -438,17 +437,17 @@ const photoDates = photos.map(serverFormatDate);
     function preloadPhoto(idx) {
         const p = photoList[idx];
         if (!p) return;
-        const sizes = parseSizes(p.AvailableSizes);
+        const sizes = parseSizes(p.availableSizes);
         const label = selectBestSize(sizes);
-        const cacheKey = p.ID + ":" + label;
+        const cacheKey = p.id + ":" + label;
         if (preloadCache.has(cacheKey)) return;
         preloadCache.add(cacheKey);
         const probe = new Image();
         probe.decoding = "async";
         probe.loading = "eager";
-        probe.src = `${baseURL}${p.Basename}_${label}.webp`;
+        probe.src = `${baseURL}${p.basename}_${label}.webp`;
         probe.onerror = () => {
-            probe.src = `${baseURL}${p.Basename}_${label}.jpg`;
+            probe.src = `${baseURL}${p.basename}_${label}.jpg`;
         };
     }
     function preloadNeighbors(center) {
@@ -458,13 +457,13 @@ const photoDates = photos.map(serverFormatDate);
     function buildHighResURL(photo) {
         if (!photo) return null;
         try {
-            const sizes = JSON.parse(photo.AvailableSizes || "[]");
+            const sizes = JSON.parse(photo.availableSizes || "[]");
             if (Array.isArray(sizes) && sizes.length) {
                 const largest = sizes[sizes.length - 1];
-                return `${baseURL}${photo.Basename}_${largest}.jpg`;
+                return `${baseURL}${photo.basename}_${largest}.jpg`;
             }
         } catch {}
-        return `${baseURL}${photo.Basename}_lqip.jpg`;
+        return `${baseURL}${photo.basename}_lqip.jpg`;
     }
     function openCurrentPhotoInNewTab() {
         const photo = photoList[currentIndex];
@@ -476,8 +475,8 @@ const photoDates = photos.map(serverFormatDate);
         const url = buildHighResURL(photo);
         if (!url) return;
         const shareData = {
-            title: `Photo ${photo.Basename}`,
-            text: (photo && photo.Description) || "",
+            title: `Photo ${photo.basename}`,
+            text: (photo && photo.description) || "",
             url,
         };
         if (navigator.share) {

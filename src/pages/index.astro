@@ -1,6 +1,24 @@
 ---
-import RandomGallery from "../components/gallery/RandomGallery.astro";
+import Gallery from "../components/gallery/Gallery.astro";
+import Lightbox from "../components/gallery/Lightbox.astro";
+import { fetchCollectionBySlug } from "../lib/api";
+import type { Photo } from "../lib/photos";
 import "../styles/global.css";
+
+const API_BASE_URL =
+	import.meta.env.PUBLIC_USE_LOCAL_BACKEND === "true"
+		? "http://localhost:8080"
+		: import.meta.env.PUBLIC_API_BASE_URL;
+
+let photos: Photo[] = [];
+let error: string | null = null;
+try {
+	const collection = await fetchCollectionBySlug(API_BASE_URL, "featured");
+	photos = collection.photos;
+} catch (e: any) {
+	error = e?.message || "Failed to load featured photos";
+}
+const baseURL = import.meta.env.PUBLIC_IMAGE_BASE_URL;
 ---
 
 <html lang="en">
@@ -40,6 +58,15 @@ import "../styles/global.css";
 			</p>
 		</div>
 
-		<RandomGallery />
+		{
+			error ? (
+				<p class="text-red-400 font-medium">{error}</p>
+			) : (
+				<>
+					<Gallery photos={photos} baseURL={baseURL} />
+					<Lightbox photos={photos} baseURL={baseURL} />
+				</>
+			)
+		}
 	</body>
 </html>

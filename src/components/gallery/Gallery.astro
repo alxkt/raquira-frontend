@@ -13,14 +13,14 @@ const { photos, baseURL } = Astro.props;
     <div class="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
         {
             photos.map((photo, index) => {
-                let sizes: string[] = parseSizes(photo.AvailableSizes);
+                let sizes: string[] = parseSizes(photo.availableSizes);
                 return (
                     <picture class="break-inside-avoid mb-4 block rounded-lg overflow-hidden">
                         <source
                             type="image/webp"
                             srcset={buildSrcset(
                                 baseURL,
-                                photo.Basename,
+                                photo.basename,
                                 "webp",
                                 sizes,
                             )}
@@ -30,7 +30,7 @@ const { photos, baseURL } = Astro.props;
                             type="image/jpeg"
                             srcset={buildSrcset(
                                 baseURL,
-                                photo.Basename,
+                                photo.basename,
                                 "jpg",
                                 sizes,
                             )}
@@ -39,12 +39,12 @@ const { photos, baseURL } = Astro.props;
                         <img
                             id={`gallery-img-${index}`}
                             data-loaded="false"
-                            src={`${baseURL}${photo.Basename}_lqip.jpg`}
-                            alt={`Photo ${photo.Basename}`}
+                            src={`${baseURL}${photo.basename}_lqip.jpg`}
+                            alt={`Photo ${photo.basename}`}
                             loading="lazy"
                             decoding="async"
-                            width={photo.Width}
-                            height={photo.Height}
+                            width={photo.width}
+                            height={photo.height}
                             class="gallery-img w-full h-auto object-cover cursor-pointer"
                             onload="this.dataset.loaded='true'; this.classList.add('loaded');"
                             onclick={`openLightbox(${index})`}

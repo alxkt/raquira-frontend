@@ -16,7 +16,7 @@ export async function getStaticPaths() {
             : import.meta.env.PUBLIC_API_BASE_URL;
     try {
         const list = await fetchCollections(API_BASE_URL);
-        return list.map((c) => ({ params: { slug: c.slug } }));
+        return list.map((c) => ({ params: { slug: c.name } }));
     } catch (e) {
         console.error("getStaticPaths collections fetch failed", e);
         return [];
@@ -43,15 +43,17 @@ try {
     collection ? (
         <article class="max-w-5xl mx-auto px-4 py-6">
             <header class="mb-6">
-                <h1 class="text-3xl font-semibold mb-2">{collection.title}</h1>
-                {collection.description && (
+                <h1 class="text-3xl font-semibold mb-2">
+                    {collection.meta.name}
+                </h1>
+                {collection.meta.description && (
                     <p class="text-zinc-300 leading-relaxed mb-2">
-                        {collection.description}
+                        {collection.meta.description}
                     </p>
                 )}
-                {collection.note && (
+                {collection.meta.note && (
                     <p class="text-sm text-zinc-500 italic">
-                        {collection.note}
+                        {collection.meta.note}
                     </p>
                 )}
             </header>

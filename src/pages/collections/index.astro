@@ -5,7 +5,8 @@ try {
     const API_BASE_URL = import.meta.env.PUBLIC_USE_LOCAL_BACKEND
         ? "http://localhost:8080"
         : import.meta.env.PUBLIC_API_BASE_URL;
-    collections = await fetchCollections(API_BASE_URL);
+    const allCollections = await fetchCollections(API_BASE_URL);
+    collections = allCollections.filter((c) => !c.hidden);
 } catch (e) {
     console.error("Collections fetch failed", e);
 }
@@ -18,9 +19,9 @@ try {
             <li class="border-b border-zinc-700/40 pb-2">
                 <a
                     class="text-blue-300 hover:text-blue-200 underline"
-                    href={`/collections/${c.slug}`}
+                    href={`/collections/${c.name}`}
                 >
-                    {c.title}
+                    {c.name}
                 </a>
                 {c.note && <p class="text-xs text-zinc-400 mt-1">{c.note}</p>}
             </li>

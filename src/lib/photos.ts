@@ -1,27 +1,12 @@
-export interface RawPhoto {
-    ID: number;
-    Basename: string;
-    Width: number;
-    Height: number;
-    AvailableSizes: string; // JSON array string
-    Year?: { Int64: number; Valid: boolean } | null;
-    Month?: { Int64: number; Valid: boolean } | null;
-    Day?: { Int64: number; Valid: boolean } | null;
-}
-
-export interface Photo extends RawPhoto {
-    YearValue?: number | null;
-    MonthValue?: number | null;
-    DayValue?: number | null;
-}
-
-export function normalizePhoto(p: RawPhoto): Photo {
-    return {
-        ...p,
-        YearValue: p.Year?.Valid ? p.Year.Int64 : null,
-        MonthValue: p.Month?.Valid ? p.Month.Int64 : null,
-        DayValue: p.Day?.Valid ? p.Day.Int64 : null,
-    };
+export interface Photo {
+    id: number;
+    basename: string;
+    width: number;
+    height: number;
+    availableSizes: string; // JSON array string
+    year?: number | null;
+    month?: number | null;
+    day?: number | null;
 }
 
 export function parseSizes(raw: string | undefined): string[] {
@@ -49,9 +34,9 @@ export function selectBestSize(sizes: string[], viewport?: { w: number; h: numbe
 }
 
 export function formatPhotoDate(p: Photo): string {
-    const y = (p as any).Year?.Valid ? (p as any).Year.Int64 : (p as any).YearValue ?? null;
-    const m = (p as any).Month?.Valid ? (p as any).Month.Int64 : (p as any).MonthValue ?? null;
-    const d = (p as any).Day?.Valid ? (p as any).Day.Int64 : (p as any).DayValue ?? null;
+    const y = p.year ?? null;
+    const m = p.month ?? null;
+    const d = p.day ?? null;
     if (!y) return 'Date unknown';
     if (y && m && d) return new Date(y, m - 1, d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     if (y && m) return new Date(y, m - 1).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
