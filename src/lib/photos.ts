@@ -7,6 +7,19 @@ export interface Photo {
     year?: number | null;
     month?: number | null;
     day?: number | null;
+    sequence?: number | null;
+    rotation?: number | null; // 0=normal, 1=90°, 2=180°, 3=270°
+    hidden?: boolean;
+}
+
+/** Convert rotation enum to CSS transform degrees */
+export function rotationToDegrees(rotation: number | null | undefined): number {
+    switch (rotation) {
+        case 1: return 90;
+        case 2: return 180;
+        case 3: return 270;
+        default: return 0;
+    }
 }
 
 export function parseSizes(raw: string | undefined): string[] {
