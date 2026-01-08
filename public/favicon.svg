@@ -1,33 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 168 168">
-  <!-- Generator: Adobe Illustrator 30.1.0, SVG Export Plug-In . SVG Version: 2.1.1 Build 136)  -->
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 168 168">
   <defs>
     <style>
-      .st0 {
+      .cls-1 {
         fill: #fff;
       }
 
-      .st1 {
-        fill: #3c3c3c;
-      }
-
-      .st2 {
+      .cls-2 {
         fill: #999;
       }
     </style>
     <symbol id="Raqicon" viewBox="0 0 104.9 168">
-      <g id="Layer_2">
-        <g id="Layer_2-2">
-          <polygon class="st2" points=".96 115.41 33.65 141.26 48.73 7.7 .96 115.41"/>
-          <polygon class="st0" points="57.59 0 41.37 143.68 103.57 129.77 57.59 0"/>
-          <polygon class="st0" points="40.74 152.24 40.74 168 104.9 153.65 104.9 137.9 40.74 152.24"/>
-          <polygon class="st2" points="0 138.82 32.81 164.78 32.81 150.96 0 125 0 138.82"/>
+      <g id="Layer_2" data-name="Layer 2">
+        <g id="Layer_2-2" data-name="Layer 2-2">
+          <polygon class="cls-2" points=".96 115.41 33.65 141.26 48.73 7.7 .96 115.41"/>
+          <polygon class="cls-1" points="57.59 0 41.37 143.68 103.57 129.77 57.59 0"/>
+          <polygon class="cls-1" points="40.74 152.24 40.74 168 104.9 153.65 104.9 137.9 40.74 152.24"/>
+          <polygon class="cls-2" points="0 138.82 32.81 164.78 32.81 150.96 0 125 0 138.82"/>
         </g>
       </g>
     </symbol>
   </defs>
-  <rect class="st1" width="168" height="168"/>
-  <g id="Layer_1">
-    <use width="104.9" height="168" transform="translate(32)" xlink:href="#Raqicon"/>
-  </g>
+  <use width="104.9" height="168" transform="translate(32)" xlink:href="#Raqicon"/>
 </svg>
