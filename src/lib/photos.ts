@@ -10,6 +10,7 @@ export interface Photo {
     sequence?: number | null;
     rotation?: number | null; // 0=normal, 1=90°, 2=180°, 3=270°
     hidden?: boolean;
+    description?: string | null;
 }
 
 /** Convert rotation enum to CSS transform degrees */

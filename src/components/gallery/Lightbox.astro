@@ -263,9 +263,7 @@ const photoDates = photos.map(serverFormatDate);
         if (dateEl) dateEl.textContent = photoDates[currentIndex] || "";
         const descEl = document.getElementById("lb-meta-description");
         const p = photoList[currentIndex];
-        const fallbackDesc =
-            "Woman with traditional hat sits to make pottery in the village square";
-        if (descEl) descEl.textContent = (p && p.Description) || fallbackDesc;
+        if (descEl) descEl.textContent = (p && p.description) || "";
     }
     function showInstantImage() {
         const photo = photoList[currentIndex];
