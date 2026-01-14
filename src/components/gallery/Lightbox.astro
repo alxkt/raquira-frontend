@@ -282,6 +282,16 @@ const photoDates = photos.map(serverFormatDate);
             instant.addEventListener(
                 "error",
                 () => {
+                    const retryCount = parseInt(
+                        instant.dataset.retryCount || "0",
+                        10,
+                    );
+                    if (retryCount >= 2) {
+                        instant.dataset.retryCount = "0";
+                        return; // Stop after 2 retry attempts
+                    }
+                    instant.dataset.retryCount = String(retryCount + 1);
+
                     const base = `${baseURL}/${photo.basename}`;
                     const lqip = `${base}_lqip.jpg`;
                     if (instant.src !== lqip) {
@@ -302,6 +312,7 @@ const photoDates = photos.map(serverFormatDate);
             );
             instant.dataset.errorHandlerAttached = "true";
         }
+        instant.dataset.retryCount = "0"; // Reset retry counter for new photo
         instant.src = gallerySrc || fallback;
         instant.alt = `Photo ${photo.basename}`;
         instant.removeAttribute("width");
