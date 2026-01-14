@@ -439,10 +439,6 @@ const photoDates = photos.map(serverFormatDate);
         }
         preloadNeighbors(currentIndex);
     }
-    function neighborIndex(index, delta) {
-        const len = photoList.length;
-        return (index + delta + len) % len;
-    }
     function preloadPhoto(idx) {
         const p = photoList[idx];
         if (!p) return;
@@ -460,8 +456,8 @@ const photoDates = photos.map(serverFormatDate);
         };
     }
     function preloadNeighbors(center) {
-        preloadPhoto(neighborIndex(center, 1));
-        preloadPhoto(neighborIndex(center, -1));
+        preloadPhoto(getVisualNeighbor(center, 1));
+        preloadPhoto(getVisualNeighbor(center, -1));
     }
     function buildHighResURL(photo) {
         if (!photo) return null;
