@@ -277,12 +277,12 @@ const photoDates = photos.map(serverFormatDate);
         if (galleryImg instanceof HTMLImageElement) {
             gallerySrc = galleryImg.currentSrc || galleryImg.src || null;
         }
-        const fallback = `${baseURL}${photo.basename}_lqip.jpg`;
+        const fallback = `${baseURL}/${photo.basename}_lqip.jpg`;
         if (!instant.dataset.errorHandlerAttached) {
             instant.addEventListener(
                 "error",
                 () => {
-                    const base = `${baseURL}${photo.basename}`;
+                    const base = `${baseURL}/${photo.basename}`;
                     const lqip = `${base}_lqip.jpg`;
                     if (instant.src !== lqip) {
                         instant.src = lqip;
@@ -362,8 +362,8 @@ const photoDates = photos.map(serverFormatDate);
             applyUpgrade(photo, sizes, undefined, instant.currentSrc);
             return;
         }
-        const webpCandidate = `${baseURL}${photo.basename}_${pickedLabel}.webp`;
-        const jpgCandidate = `${baseURL}${photo.basename}_${pickedLabel}.jpg`;
+        const webpCandidate = `${baseURL}/${photo.basename}_${pickedLabel}.webp`;
+        const jpgCandidate = `${baseURL}/${photo.basename}_${pickedLabel}.jpg`;
         const preloader = new Image();
         preloader.onload = () => {
             if (token !== upgradeToken) return;
@@ -391,10 +391,10 @@ const photoDates = photos.map(serverFormatDate);
         const upImg = document.getElementById("lb-upgrade-img");
         if (!(upgradePicture && upWebp && upJpg && upImg)) return;
         const webpSrcset = sizes
-            .map((s) => `${baseURL}${photo.basename}_${s}.webp ${s}`)
+            .map((s) => `${baseURL}/${photo.basename}_${s}.webp ${s}`)
             .join(", ");
         const jpgSrcset = sizes
-            .map((s) => `${baseURL}${photo.basename}_${s}.jpg ${s}`)
+            .map((s) => `${baseURL}/${photo.basename}_${s}.jpg ${s}`)
             .join(", ");
         upWebp.setAttribute("srcset", webpSrcset);
         upWebp.setAttribute("sizes", "100vw");
@@ -406,7 +406,7 @@ const photoDates = photos.map(serverFormatDate);
         upImg.src =
             loadedWebp ||
             loadedJpg ||
-            `${baseURL}${photo.basename}_${sizes[sizes.length - 1]}.jpg`;
+            `${baseURL}/${photo.basename}_${sizes[sizes.length - 1]}.jpg`;
         upImg.style.display = "block";
         void upgradePicture.offsetWidth;
         upgradePicture.classList.remove("opacity-0");
@@ -443,9 +443,9 @@ const photoDates = photos.map(serverFormatDate);
         const probe = new Image();
         probe.decoding = "async";
         probe.loading = "eager";
-        probe.src = `${baseURL}${p.basename}_${label}.webp`;
+        probe.src = `${baseURL}/${p.basename}_${label}.webp`;
         probe.onerror = () => {
-            probe.src = `${baseURL}${p.basename}_${label}.jpg`;
+            probe.src = `${baseURL}/${p.basename}_${label}.jpg`;
         };
     }
     function preloadNeighbors(center) {
@@ -458,10 +458,10 @@ const photoDates = photos.map(serverFormatDate);
             const sizes = JSON.parse(photo.availableSizes || "[]");
             if (Array.isArray(sizes) && sizes.length) {
                 const largest = sizes[sizes.length - 1];
-                return `${baseURL}${photo.basename}_${largest}.jpg`;
+                return `${baseURL}/${photo.basename}_${largest}.jpg`;
             }
         } catch {}
-        return `${baseURL}${photo.basename}_lqip.jpg`;
+        return `${baseURL}/${photo.basename}_lqip.jpg`;
     }
     function openCurrentPhotoInNewTab() {
         const photo = photoList[currentIndex];

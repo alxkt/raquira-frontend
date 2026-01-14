@@ -31,7 +31,7 @@ export function parseSizes(raw: string | undefined): string[] {
 }
 
 export function buildSrcset(baseURL: string, basename: string, ext: string, sizes: string[]): string {
-    return sizes.map(size => `${baseURL}${basename}_${size}.${ext} ${size}`).join(', ');
+    return sizes.map(size => `${baseURL}/${basename}_${size}.${ext} ${size}`).join(', ');
 }
 
 export function selectBestSize(sizes: string[], viewport?: { w: number; h: number; dpr: number }): string {

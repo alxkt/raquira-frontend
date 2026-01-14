@@ -32,7 +32,7 @@ function requireEnv(name, { mustEndWithSlash = false } = {}) {
 }
 
 // Critical envs for this project
-requireEnv('PUBLIC_IMAGE_BASE_URL', { mustEndWithSlash: true });
+requireEnv('PUBLIC_IMAGE_BASE_URL');
 requireEnv('PUBLIC_API_BASE_URL');
 
 // Check that build output exists

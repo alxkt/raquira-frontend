@@ -39,7 +39,7 @@ const { photos, baseURL } = Astro.props;
                         <img
                             id={`gallery-img-${index}`}
                             data-loaded="false"
-                            src={`${baseURL}${photo.basename}_lqip.jpg`}
+                            src={`${baseURL}/${photo.basename}_lqip.jpg`}
                             alt={`Photo ${photo.basename}`}
                             loading="lazy"
                             decoding="async"
