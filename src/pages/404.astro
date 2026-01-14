@@ -1,0 +1,115 @@
+---
+import Footer from "../components/Footer.astro";
+import "../styles/global.css";
+---
+
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="16x16"
+            href="/favicon-16.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="24x24"
+            href="/favicon-24.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="/favicon-32.png"
+        />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+        <meta name="viewport" content="width=device-width" />
+        <meta name="generator" content={Astro.generator} />
+        <title>Page Not Found — Ráquira</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+            rel="stylesheet"
+        />
+    </head>
+    <body
+        class="bg-zinc-950 p-8 min-h-screen flex flex-col"
+        style="font-family: 'Inter', sans-serif;"
+    >
+        <main
+            class="flex-1 flex flex-col items-center justify-center text-center"
+        >
+            <!-- Logo -->
+            <svg
+                width="80"
+                height="128"
+                class="mb-6"
+                viewBox="0 0 168 168"
+                xmlns="http://www.w3.org/2000/svg"
+            >
+                <polygon
+                    fill="#525252"
+                    points="32.96 115.41 65.65 141.26 80.73 7.7 32.96 115.41"
+                ></polygon>
+                <polygon
+                    fill="#a1a1aa"
+                    points="89.59 0 73.37 143.68 135.57 129.77 89.59 0"
+                ></polygon>
+                <polygon
+                    fill="#a1a1aa"
+                    points="72.74 152.24 72.74 168 136.9 153.65 136.9 137.9 72.74 152.24"
+                ></polygon>
+                <polygon
+                    fill="#525252"
+                    points="32 138.82 64.81 164.78 64.81 150.96 32 125 32 138.82"
+                ></polygon>
+            </svg>
+            <h1
+                class="text-zinc-700 text-[12rem] font-bold leading-none mb-4 select-none"
+                style="font-family: 'Poppins', sans-serif;"
+            >
+                404
+            </h1>
+            <h2
+                class="text-red-50 text-3xl font-semibold mb-4"
+                style="font-family: 'Poppins', sans-serif;"
+            >
+                Page Not Found
+            </h2>
+            <p class="text-gray-400 text-lg mb-8 max-w-md">
+                The page you're looking for doesn't exist or has been moved.
+            </p>
+            <div class="flex gap-4">
+                <a
+                    href="/"
+                    class="group inline-flex items-center gap-3 px-8 py-4 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 rounded-full text-zinc-200 hover:text-white text-lg font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-zinc-900/50"
+                    style="font-family: 'Poppins', sans-serif;"
+                >
+                    <svg
+                        class="w-5 h-5 transition-transform duration-300 group-hover:-translate-x-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M7 8l-4 4m0 0l4 4m-4-4h18"></path>
+                    </svg>
+                    <span>Back to Home</span>
+                </a>
+            </div>
+        </main>
+
+        <Footer />
+    </body>
+</html>
