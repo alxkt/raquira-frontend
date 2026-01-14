@@ -137,19 +137,45 @@ const photoDates = photos.map(serverFormatDate);
             const img = document.getElementById(`gallery-img-${i}`);
             if (img) {
                 const rect = img.getBoundingClientRect();
-                positions.push({ index: i, x: rect.left, y: rect.top });
+                positions.push({
+                    index: i,
+                    x: rect.left,
+                    y: rect.top,
+                    height: rect.height,
+                });
             }
         }
-        // Sort by row (y) first, then by column (x) within each row
-        // Use a threshold to group items in the same visual row
-        const rowThreshold = 20;
-        positions.sort((a, b) => {
-            if (Math.abs(a.y - b.y) < rowThreshold) {
-                return a.x - b.x; // same row, sort by x
+        if (positions.length === 0) return;
+
+        // Sort by y position first to prepare for row grouping
+        positions.sort((a, b) => a.y - b.y);
+
+        // Use dynamic threshold based on smallest image height
+        // CSS columns cause images in the same visual "row" to have varying y positions
+        const minHeight = Math.min(...positions.map((p) => p.height));
+        const rowThreshold = Math.max(minHeight * 0.5, 50);
+
+        // Group into rows: images within threshold of row start belong to same row
+        const rows = [];
+        let currentRow = [positions[0]];
+        let rowStartY = positions[0].y;
+
+        for (let i = 1; i < positions.length; i++) {
+            const pos = positions[i];
+            if (pos.y - rowStartY < rowThreshold) {
+                currentRow.push(pos);
+            } else {
+                rows.push(currentRow);
+                currentRow = [pos];
+                rowStartY = pos.y;
             }
-            return a.y - b.y; // different rows, sort by y
-        });
-        visualOrder = positions.map((p) => p.index);
+        }
+        rows.push(currentRow);
+
+        // Sort each row by x position, then flatten to get visual order
+        visualOrder = rows.flatMap((row) =>
+            row.sort((a, b) => a.x - b.x).map((p) => p.index),
+        );
     }
 
     function getVisualNeighbor(currentIdx, direction) {
