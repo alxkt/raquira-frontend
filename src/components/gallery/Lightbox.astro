@@ -5,7 +5,7 @@ import {
     ChevronRight,
     X,
     ExternalLink,
-    UserRoundSearch,
+    Mail,
 } from "@lucide/astro";
 interface LBProps {
     photos: Photo[];
@@ -105,13 +105,15 @@ const photoDates = photos.map(serverFormatDate);
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                     <button
-                        aria-label="Share photo"
-                        onclick="window.shareCurrentPhoto()"
+                        aria-label="Contact about this photo"
+                        title="Contact us about this photo"
+                        onclick="window.contactAboutCurrentPhoto()"
                         class="text-orange-50 p-1 rounded hover:text-orange-200 hover:scale-110 transition-transform"
-                        ><UserRoundSearch class="w-8 h-8" /></button
+                        ><Mail class="w-8 h-8" /></button
                     >
                     <button
                         aria-label="Open photo in new tab"
+                        title="Open full resolution in new tab"
                         onclick="window.openCurrentPhotoInNewTab()"
                         class="text-orange-50 p-1 rounded hover:text-orange-200 hover:scale-110 transition-transform"
                         ><ExternalLink class="w-8 h-8" /></button
@@ -501,31 +503,18 @@ const photoDates = photos.map(serverFormatDate);
         const url = buildHighResURL(photo);
         if (url) window.open(url, "_blank", "noopener,noreferrer");
     }
-    async function shareCurrentPhoto() {
+    function contactAboutCurrentPhoto() {
         const photo = photoList[currentIndex];
-        const url = buildHighResURL(photo);
-        if (!url) return;
-        const shareData = {
-            title: `Photo ${photo.basename}`,
-            text: (photo && photo.description) || "",
-            url,
-        };
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-            } catch {}
-        } else if (navigator.clipboard) {
-            try {
-                await navigator.clipboard.writeText(url);
-                // Optional: could add a transient UI indicator later
-            } catch {}
-        } else {
-            prompt("Copy photo URL", url); // fallback
-        }
+        if (!photo) return;
+        // Store the photo reference and basename in sessionStorage
+        sessionStorage.setItem("contactImage", String(photo.id));
+        sessionStorage.setItem("contactImageBasename", photo.basename);
+        // Navigate to the contact page
+        window.location.href = "/contact";
     }
     window.openLightbox = openLightbox;
     window.closeLightbox = closeLightbox;
     window.navigateLightbox = navigateLightbox;
     window.openCurrentPhotoInNewTab = openCurrentPhotoInNewTab;
-    window.shareCurrentPhoto = shareCurrentPhoto;
+    window.contactAboutCurrentPhoto = contactAboutCurrentPhoto;
 </script>
