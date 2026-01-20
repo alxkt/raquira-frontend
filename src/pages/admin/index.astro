@@ -1,0 +1,158 @@
+---
+export const prerender = false; // Enable SSR for this page
+
+import "../../styles/global.css";
+
+const ADMIN_PASSWORD = import.meta.env.ADMIN_PASSWORD;
+
+// Check if password is configured
+if (!ADMIN_PASSWORD) {
+    return new Response("Admin password not configured", { status: 500 });
+}
+
+// Check for auth token in cookie
+const authToken = Astro.cookies.get("admin_auth")?.value;
+const isAuthenticated = authToken === ADMIN_PASSWORD;
+
+// If not authenticated, show login form
+if (!isAuthenticated) {
+    // Check if this is a login attempt
+    if (Astro.request.method === "POST") {
+        const formData = await Astro.request.formData();
+        const password = formData.get("password");
+
+        if (password === ADMIN_PASSWORD) {
+            // Set auth cookie and redirect
+            Astro.cookies.set("admin_auth", ADMIN_PASSWORD, {
+                path: "/",
+                httpOnly: true,
+                secure: import.meta.env.PROD,
+                sameSite: "strict",
+                maxAge: 60 * 60 * 24 * 7, // 7 days
+            });
+            return Astro.redirect("/admin");
+        }
+    }
+}
+---
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="16x16"
+            href="/favicon-16.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="24x24"
+            href="/favicon-24.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="/favicon-32.png"
+        />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="viewport" content="width=device-width" />
+        <meta name="generator" content={Astro.generator} />
+        <title>Admin | Raquira</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+            rel="stylesheet"
+        />
+    </head>
+    <body
+        class="bg-zinc-950 min-h-screen"
+        style="font-family: 'Inter', sans-serif;"
+    >
+        {
+            !isAuthenticated ? (
+                <div class="flex items-center justify-center min-h-screen p-4">
+                    <div class="w-full max-w-md">
+                        <h1
+                            class="text-red-50 text-3xl font-bold mb-8 text-center"
+                            style="font-family: 'Poppins', sans-serif;"
+                        >
+                            Admin Login
+                        </h1>
+                        <form
+                            method="POST"
+                            class="bg-zinc-900 rounded-lg p-8 shadow-xl"
+                        >
+                            <div class="mb-6">
+                                <label
+                                    for="password"
+                                    class="block text-zinc-300 text-sm font-medium mb-2"
+                                >
+                                    Password
+                                </label>
+                                <input
+                                    type="password"
+                                    id="password"
+                                    name="password"
+                                    required
+                                    autofocus
+                                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-600 focus:border-transparent"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                class="w-full px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded-lg font-medium transition-colors"
+                            >
+                                Login
+                            </button>
+                        </form>
+                        {Astro.request.method === "POST" && (
+                            <p class="mt-4 text-red-400 text-sm text-center">
+                                Invalid password
+                            </p>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <div class="p-8">
+                    <header class="mb-8">
+                        <h1
+                            class="text-red-50 text-3xl md:text-4xl font-bold mb-4"
+                            style="font-family: 'Poppins', sans-serif;"
+                        >
+                            Admin Dashboard
+                        </h1>
+                        <p class="text-zinc-400 text-sm">
+                            Authenticated successfully
+                        </p>
+                    </header>
+
+                    <div class="flex gap-4">
+                        <a
+                            href="/"
+                            class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-lg text-sm transition-colors"
+                        >
+                            View Site
+                        </a>
+                        <form method="POST" action="/admin/logout">
+                            <button
+                                type="submit"
+                                class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-lg text-sm transition-colors"
+                            >
+                                Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )
+        }
+    </body>
+</html>
