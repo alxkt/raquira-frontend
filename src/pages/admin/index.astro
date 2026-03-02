@@ -4,9 +4,13 @@ export const prerender = false; // Enable SSR for this page
 import "../../styles/global.css";
 import type { Photo } from "../../lib/photos";
 import { parseSizes, formatAdminDate } from "../../lib/photos";
+import type { CollectionMeta } from "../../lib/api";
 
 const runtime = (Astro.locals as any).runtime;
-const ADMIN_PASSWORD = runtime?.env?.ADMIN_PASSWORD ?? import.meta.env.ADMIN_PASSWORD;
+const ADMIN_PASSWORD =
+    runtime?.env?.ADMIN_PASSWORD ?? import.meta.env.ADMIN_PASSWORD;
+const ADMIN_API_KEY =
+    runtime?.env?.ADMIN_API_KEY ?? import.meta.env.ADMIN_API_KEY;
 
 // Check if password is configured
 if (!ADMIN_PASSWORD) {
@@ -42,32 +46,53 @@ if (!isAuthenticated) {
 let photo: Photo | null = null;
 let maxImageId = 0;
 let error: string | null = null;
+let photoCollections: CollectionMeta[] = [];
+let allCollections: CollectionMeta[] = [];
 
 if (isAuthenticated) {
-    const apiBase = import.meta.env.PUBLIC_USE_LOCAL_BACKEND === "true"
-        ? "http://localhost:8080"
-        : import.meta.env.PUBLIC_API_BASE_URL;
+    const apiBase =
+        import.meta.env.PUBLIC_USE_LOCAL_BACKEND === "true"
+            ? "http://localhost:8080"
+            : import.meta.env.PUBLIC_API_BASE_URL;
 
     const url = new URL(Astro.request.url);
     const photoId = parseInt(url.searchParams.get("id") || "1", 10);
 
     try {
-        // Fetch stats to get max ID
-        const statsRes = await fetch(`${apiBase}/images/stats`);
-        if (!statsRes.ok) throw new Error(`Stats API returned ${statsRes.status}`);
+        const [statsRes, photoRes, collectionsRes, allCollectionsRes] =
+            await Promise.all([
+                fetch(`${apiBase}/images/stats`),
+                fetch(`${apiBase}/images/${photoId}`),
+                fetch(`${apiBase}/images/${photoId}/collections`),
+                fetch(`${apiBase}/collections`),
+            ]);
+
+        if (!statsRes.ok)
+            throw new Error(`Stats API returned ${statsRes.status}`);
         const stats = await statsRes.json();
         maxImageId = stats.maxImageId;
 
-        // Fetch the specific photo
-        const photoRes = await fetch(`${apiBase}/images/${photoId}`);
-        if (!photoRes.ok) throw new Error(`Photo API returned ${photoRes.status}`);
+        if (!photoRes.ok)
+            throw new Error(`Photo API returned ${photoRes.status}`);
         photo = await photoRes.json();
+
+        if (collectionsRes.ok) {
+            photoCollections = await collectionsRes.json();
+        }
+
+        if (allCollectionsRes.ok) {
+            allCollections = await allCollectionsRes.json();
+        }
     } catch (e) {
         error = e instanceof Error ? e.message : "Failed to fetch photo";
     }
 }
 
 const imageBaseURL = import.meta.env.PUBLIC_IMAGE_BASE_URL;
+const apiBase =
+    import.meta.env.PUBLIC_USE_LOCAL_BACKEND === "true"
+        ? "http://localhost:8080"
+        : import.meta.env.PUBLIC_API_BASE_URL;
 ---
 
 <!doctype html>
@@ -167,11 +192,15 @@ const imageBaseURL = import.meta.env.PUBLIC_IMAGE_BASE_URL;
                             </h1>
                             {photo && (
                                 <p class="text-zinc-400 text-sm">
-                                    Photo <span
+                                    Photo{" "}
+                                    <span
                                         id="photo-id-display"
                                         class="underline decoration-dotted cursor-pointer hover:text-zinc-200 transition-colors"
                                         title="Click to jump to ID"
-                                    >{photo.id}</span> / {maxImageId}
+                                    >
+                                        {photo.id}
+                                    </span>{" "}
+                                    / {maxImageId}
                                     <input
                                         id="photo-id-input"
                                         type="number"
@@ -237,10 +266,16 @@ const imageBaseURL = import.meta.env.PUBLIC_IMAGE_BASE_URL;
                             {/* Photo and Data Grid */}
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 {/* Photo Preview */}
-                                <div class="bg-zinc-900 rounded-lg p-4">
+                                <div
+                                    id="photo-preview"
+                                    class="bg-zinc-900 rounded-lg p-4 overflow-hidden"
+                                >
                                     <img
                                         src={`${imageBaseURL}/${photo.basename}_960w.jpg`}
-                                        alt={photo.description || `Photo ${photo.id}`}
+                                        alt={
+                                            photo.description ||
+                                            `Photo ${photo.id}`
+                                        }
                                         class="w-full h-auto rounded"
                                         style={`transform: rotate(${(photo.rotation || 0) * 90}deg);`}
                                     />
@@ -248,59 +283,268 @@ const imageBaseURL = import.meta.env.PUBLIC_IMAGE_BASE_URL;
 
                                 {/* Photo Data Table */}
                                 <div class="bg-zinc-900 rounded-lg p-6">
-                                    <h2 class="text-zinc-100 text-xl font-semibold mb-4" style="font-family: 'Poppins', sans-serif;">
+                                    <h2
+                                        class="text-zinc-100 text-xl font-semibold mb-4"
+                                        style="font-family: 'Poppins', sans-serif;"
+                                    >
                                         Photo Data
                                     </h2>
                                     <table class="w-full text-sm">
                                         <tbody class="divide-y divide-zinc-800">
                                             <tr>
-                                                <td class="py-3 text-zinc-400 font-medium">ID</td>
-                                                <td class="py-3 text-zinc-100">{photo.id}</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="py-3 text-zinc-400 font-medium">Basename</td>
-                                                <td class="py-3 text-zinc-100 font-mono text-xs">{photo.basename}</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="py-3 text-zinc-400 font-medium">Original Ref</td>
-                                                <td class="py-3 text-zinc-100 font-mono text-xs">{photo.originalRef || "—"}</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="py-3 text-zinc-400 font-medium">Dimensions</td>
-                                                <td class="py-3 text-zinc-100">{photo.width} × {photo.height}</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="py-3 text-zinc-400 font-medium">Available Sizes</td>
-                                                <td class="py-3 text-zinc-100 font-mono text-xs">{parseSizes(photo.availableSizes).join(", ")}</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="py-3 text-zinc-400 font-medium">Date</td>
-                                                <td class="py-3 text-zinc-100 font-mono">{formatAdminDate(photo)}</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="py-3 text-zinc-400 font-medium">Sequence</td>
-                                                <td class="py-3 text-zinc-100">{photo.sequence ?? "—"}</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="py-3 text-zinc-400 font-medium">Sequence Raw</td>
-                                                <td class="py-3 text-zinc-100 font-mono text-xs">{photo.sequenceRaw || "—"}</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="py-3 text-zinc-400 font-medium">Rotation</td>
+                                                <td class="py-3 text-zinc-400 font-medium">
+                                                    ID
+                                                </td>
                                                 <td class="py-3 text-zinc-100">
-                                                    {photo.rotation ?? 0} ({(photo.rotation || 0) * 90}°)
+                                                    {photo.id}
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td class="py-3 text-zinc-400 font-medium">Hidden</td>
-                                                <td class="py-3 text-zinc-100">{photo.hidden ? "Yes" : "No"}</td>
+                                                <td class="py-3 text-zinc-400 font-medium">
+                                                    Basename
+                                                </td>
+                                                <td class="py-3 text-zinc-100 font-mono text-xs">
+                                                    {photo.basename}
+                                                </td>
                                             </tr>
                                             <tr>
-                                                <td class="py-3 text-zinc-400 font-medium">Description</td>
-                                                <td class="py-3 text-zinc-100">{photo.description || "—"}</td>
+                                                <td class="py-3 text-zinc-400 font-medium">
+                                                    Original Ref
+                                                </td>
+                                                <td class="py-3 text-zinc-100 font-mono text-xs">
+                                                    {photo.originalRef || "—"}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">
+                                                    Dimensions
+                                                </td>
+                                                <td class="py-3 text-zinc-100">
+                                                    {photo.width} ×{" "}
+                                                    {photo.height}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">
+                                                    Available Sizes
+                                                </td>
+                                                <td class="py-3 text-zinc-100 font-mono text-xs">
+                                                    {parseSizes(
+                                                        photo.availableSizes,
+                                                    ).join(", ")}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">
+                                                    Date
+                                                </td>
+                                                <td class="py-3 text-zinc-100 font-mono">
+                                                    {formatAdminDate(photo)}
+                                                </td>
+                                            </tr>
+                                            {/* Editable: Sequence (click-to-edit) */}
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">
+                                                    Sequence
+                                                </td>
+                                                <td class="py-3">
+                                                    <span
+                                                        id="sequence-display"
+                                                        class={`underline decoration-dotted cursor-pointer transition-colors ${photo.sequence != null ? "text-zinc-100 hover:text-zinc-200" : "text-zinc-500 italic hover:text-zinc-400"}`}
+                                                        title="Click to edit"
+                                                    >
+                                                        {photo.sequence ?? "No sequence"}
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        id="sequence-input"
+                                                        value={
+                                                            photo.sequence ?? ""
+                                                        }
+                                                        placeholder="—"
+                                                        class="hidden w-24 px-2 py-1 bg-zinc-800 border border-zinc-600 rounded text-zinc-100 text-sm focus:outline-none focus:border-zinc-400"
+                                                    />
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">
+                                                    Sequence Raw
+                                                </td>
+                                                <td class="py-3 text-zinc-100 font-mono text-xs">
+                                                    {photo.sequenceRaw || "—"}
+                                                </td>
+                                            </tr>
+                                            {/* Editable: Rotation */}
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">
+                                                    Rotation
+                                                </td>
+                                                <td class="py-3">
+                                                    <div
+                                                        class="flex gap-2"
+                                                        id="rotation-controls"
+                                                    >
+                                                        {[0, 1, 2, 3].map(
+                                                            (r) => (
+                                                                <button
+                                                                    data-rotation={
+                                                                        r
+                                                                    }
+                                                                    class={`px-3 py-1 rounded text-xs transition-colors ${
+                                                                        (photo.rotation ??
+                                                                            0) ===
+                                                                        r
+                                                                            ? "bg-zinc-600 text-zinc-100"
+                                                                            : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                                                                    }`}
+                                                                >
+                                                                    {r * 90}°
+                                                                </button>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {/* Editable: Hidden */}
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">
+                                                    Hidden
+                                                </td>
+                                                <td class="py-3">
+                                                    <label class="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            id="hidden-toggle"
+                                                            checked={
+                                                                photo.hidden
+                                                            }
+                                                            class="w-4 h-4 rounded bg-zinc-800 border-zinc-600 text-zinc-500 focus:ring-zinc-600"
+                                                        />
+                                                        <span
+                                                            id="hidden-label"
+                                                            class="text-zinc-100 text-sm"
+                                                        >
+                                                            {photo.hidden
+                                                                ? "Yes"
+                                                                : "No"}
+                                                        </span>
+                                                    </label>
+                                                </td>
+                                            </tr>
+                                            {/* Editable: Description (click-to-edit) */}
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium align-top">
+                                                    Description
+                                                </td>
+                                                <td class="py-3">
+                                                    <span
+                                                        id="description-display"
+                                                        class={`underline decoration-dotted cursor-pointer transition-colors ${photo.description ? "text-zinc-100 hover:text-zinc-200" : "text-zinc-500 italic hover:text-zinc-400"}`}
+                                                        title="Click to edit"
+                                                    >
+                                                        {photo.description ||
+                                                            "No description"}
+                                                    </span>
+                                                    <textarea
+                                                        id="description-input"
+                                                        rows="3"
+                                                        placeholder="—"
+                                                        class="hidden w-full px-2 py-1 bg-zinc-800 border border-zinc-600 rounded text-zinc-100 text-sm focus:outline-none focus:border-zinc-400 resize-y"
+                                                    >
+                                                        {photo.description ||
+                                                            ""}
+                                                    </textarea>
+                                                </td>
                                             </tr>
                                         </tbody>
                                     </table>
+
+                                    {/* Status message for edits — fixed height to prevent layout shift */}
+                                    <div
+                                        id="edit-status"
+                                        class="mt-2 text-sm h-5"
+                                    >
+                                        &nbsp;
+                                    </div>
+                                </div>
+
+                                {/* Collections Section */}
+                                <div class="bg-zinc-900 rounded-lg p-6 lg:col-span-2">
+                                    <h2
+                                        class="text-zinc-100 text-xl font-semibold mb-4"
+                                        style="font-family: 'Poppins', sans-serif;"
+                                    >
+                                        Collections
+                                    </h2>
+
+                                    {/* Current collections */}
+                                    <div
+                                        id="collection-tags"
+                                        class="flex flex-wrap gap-2 mb-4"
+                                    >
+                                        {photoCollections.length === 0 && (
+                                            <span
+                                                id="no-collections-msg"
+                                                class="text-zinc-500 text-sm"
+                                            >
+                                                Not in any collections
+                                            </span>
+                                        )}
+                                        {photoCollections.map((c) => (
+                                            <span
+                                                class="collection-tag inline-flex items-center gap-1 px-3 py-1 bg-zinc-800 text-zinc-200 rounded-full text-sm"
+                                                data-collection-id={c.id}
+                                            >
+                                                {c.name}
+                                                <button
+                                                    class="remove-collection text-zinc-500 hover:text-red-400 ml-1"
+                                                    data-collection-id={c.id}
+                                                    title={`Remove from ${c.name}`}
+                                                >
+                                                    ×
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+
+                                    {/* Add to collection */}
+                                    {(() => {
+                                        const currentIds = new Set(
+                                            photoCollections.map((c) => c.id),
+                                        );
+                                        const available = allCollections.filter(
+                                            (c) => !currentIds.has(c.id),
+                                        );
+                                        return available.length > 0 ? (
+                                            <div
+                                                id="add-collection-container"
+                                                class="flex gap-2 items-center"
+                                            >
+                                                <select
+                                                    id="add-collection-select"
+                                                    class="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm focus:outline-none focus:border-zinc-500"
+                                                >
+                                                    {available.map((c) => (
+                                                        <option value={c.id}>
+                                                            {c.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                    id="add-collection-btn"
+                                                    class="px-4 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm transition-colors"
+                                                >
+                                                    Add
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div id="add-collection-container">
+                                                <p class="text-zinc-500 text-sm">
+                                                    In all available collections
+                                                </p>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>
@@ -308,39 +552,363 @@ const imageBaseURL = import.meta.env.PUBLIC_IMAGE_BASE_URL;
                 </div>
             )
         }
-        <script is:inline define:vars={{ maxImageId }}>
-            const display = document.getElementById('photo-id-display');
-            const input = document.getElementById('photo-id-input');
+        <script
+            is:inline
+            define:vars={{
+                maxImageId,
+                apiBase,
+                ADMIN_API_KEY,
+                photoCollections,
+                allCollections,
+            }}
+        >
+            const photoId =
+                new URLSearchParams(window.location.search).get("id") || "1";
 
-            if (display && input) {
-                display.addEventListener('click', () => {
-                    input.value = display.textContent.trim();
-                    display.classList.add('hidden');
-                    input.classList.remove('hidden');
-                    input.focus();
-                    input.select();
+            // --- ID Jump Navigation ---
+            const display = document.getElementById("photo-id-display");
+            const idInput = document.getElementById("photo-id-input");
+
+            if (display && idInput) {
+                display.addEventListener("click", () => {
+                    idInput.value = display.textContent.trim();
+                    display.classList.add("hidden");
+                    idInput.classList.remove("hidden");
+                    idInput.focus();
+                    idInput.select();
                 });
 
                 const commit = () => {
-                    const val = parseInt(input.value, 10);
+                    const val = parseInt(idInput.value, 10);
                     if (!isNaN(val) && val >= 1 && val <= maxImageId) {
                         window.location.href = `/admin?id=${val}`;
                     } else {
-                        cancel();
+                        cancelJump();
                     }
                 };
 
-                const cancel = () => {
-                    input.classList.add('hidden');
-                    display.classList.remove('hidden');
+                const cancelJump = () => {
+                    idInput.classList.add("hidden");
+                    display.classList.remove("hidden");
                 };
 
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') commit();
-                    if (e.key === 'Escape') cancel();
+                idInput.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") commit();
+                    if (e.key === "Escape") cancelJump();
                 });
 
-                input.addEventListener('blur', cancel);
+                idInput.addEventListener("blur", cancelJump);
+            }
+
+            // --- Edit Status ---
+            const statusEl = document.getElementById("edit-status");
+            let statusTimer = null;
+
+            function showStatus(msg, isError) {
+                if (!statusEl) return;
+                if (statusTimer) clearTimeout(statusTimer);
+                statusEl.textContent = msg;
+                statusEl.className = `mt-2 text-sm h-5 ${isError ? "text-red-400" : "text-green-400"}`;
+                if (!isError) {
+                    statusTimer = setTimeout(() => {
+                        statusEl.innerHTML = "&nbsp;";
+                        statusEl.className = "mt-2 text-sm h-5";
+                    }, 2000);
+                }
+            }
+
+            // --- PATCH Helper ---
+            async function patchPhoto(data) {
+                const res = await fetch(`${apiBase}/admin/images/${photoId}`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${ADMIN_API_KEY}`,
+                    },
+                    body: JSON.stringify(data),
+                });
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(text || `Error ${res.status}`);
+                }
+                return res.json();
+            }
+
+            // --- Rotation ---
+            const rotationControls =
+                document.getElementById("rotation-controls");
+            if (rotationControls) {
+                rotationControls.addEventListener("click", async (e) => {
+                    const btn = e.target.closest("[data-rotation]");
+                    if (!btn) return;
+                    const rotation = parseInt(btn.dataset.rotation, 10);
+                    try {
+                        await patchPhoto({ rotation });
+                        // Update button styles
+                        rotationControls
+                            .querySelectorAll("[data-rotation]")
+                            .forEach((b) => {
+                                const isActive =
+                                    parseInt(b.dataset.rotation, 10) ===
+                                    rotation;
+                                b.className = `px-3 py-1 rounded text-xs transition-colors ${
+                                    isActive
+                                        ? "bg-zinc-600 text-zinc-100"
+                                        : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                                }`;
+                            });
+                        // Update image preview
+                        const img =
+                            document.querySelector("#photo-preview img");
+                        if (img)
+                            img.style.transform = `rotate(${rotation * 90}deg)`;
+                        showStatus("Rotation saved", false);
+                    } catch (err) {
+                        showStatus(`Failed: ${err.message}`, true);
+                    }
+                });
+            }
+
+            // --- Hidden Toggle ---
+            const hiddenToggle = document.getElementById("hidden-toggle");
+            const hiddenLabel = document.getElementById("hidden-label");
+            if (hiddenToggle) {
+                hiddenToggle.addEventListener("change", async () => {
+                    const hidden = hiddenToggle.checked;
+                    try {
+                        await patchPhoto({ hidden });
+                        if (hiddenLabel)
+                            hiddenLabel.textContent = hidden ? "Yes" : "No";
+                        showStatus("Hidden status saved", false);
+                    } catch (err) {
+                        hiddenToggle.checked = !hidden;
+                        showStatus(`Failed: ${err.message}`, true);
+                    }
+                });
+            }
+
+            // --- Sequence (click-to-edit) ---
+            const seqDisplay = document.getElementById("sequence-display");
+            const seqInput = document.getElementById("sequence-input");
+            if (seqDisplay && seqInput) {
+                const openSeq = () => {
+                    const text = seqDisplay.textContent.trim();
+                    seqInput.value = text === "No sequence" ? "" : text;
+                    seqDisplay.classList.add("hidden");
+                    seqInput.classList.remove("hidden");
+                    seqInput.focus();
+                    seqInput.select();
+                };
+
+                const closeSeq = () => {
+                    seqInput.classList.add("hidden");
+                    seqDisplay.classList.remove("hidden");
+                };
+
+                const updateSeqStyle = (hasValue) => {
+                    seqDisplay.className = `underline decoration-dotted cursor-pointer transition-colors ${hasValue ? "text-zinc-100 hover:text-zinc-200" : "text-zinc-500 italic hover:text-zinc-400"}`;
+                };
+
+                const saveSequence = async () => {
+                    const val = seqInput.value.trim();
+                    if (val === "") {
+                        closeSeq();
+                        return;
+                    }
+                    const sequence = parseInt(val, 10);
+                    if (isNaN(sequence)) {
+                        closeSeq();
+                        return;
+                    }
+                    const displayVal = String(sequence);
+                    if (displayVal === seqDisplay.textContent.trim()) {
+                        closeSeq();
+                        return;
+                    }
+                    try {
+                        await patchPhoto({ sequence });
+                        seqDisplay.textContent = displayVal;
+                        updateSeqStyle(true);
+                        closeSeq();
+                        showStatus("Sequence saved", false);
+                    } catch (err) {
+                        closeSeq();
+                        showStatus(`Failed: ${err.message}`, true);
+                    }
+                };
+
+                seqDisplay.addEventListener("click", openSeq);
+                seqInput.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        saveSequence();
+                    }
+                    if (e.key === "Escape") closeSeq();
+                });
+                seqInput.addEventListener("blur", saveSequence);
+            }
+
+            // --- Description (click-to-edit) ---
+            const descDisplay = document.getElementById("description-display");
+            const descInput = document.getElementById("description-input");
+            if (descDisplay && descInput) {
+                const openDesc = () => {
+                    const text = descDisplay.textContent.trim();
+                    descInput.value = text === "No description" ? "" : text;
+                    descDisplay.classList.add("hidden");
+                    descInput.classList.remove("hidden");
+                    descInput.focus();
+                };
+
+                const closeDesc = () => {
+                    descInput.classList.add("hidden");
+                    descDisplay.classList.remove("hidden");
+                };
+
+                const updateDescStyle = (hasValue) => {
+                    descDisplay.className = `underline decoration-dotted cursor-pointer transition-colors ${hasValue ? "text-zinc-100 hover:text-zinc-200" : "text-zinc-500 italic hover:text-zinc-400"}`;
+                };
+
+                const saveDescription = async () => {
+                    const val = descInput.value.trim();
+                    const description = val === "" ? "" : val;
+                    const displayVal = description || "No description";
+                    if (displayVal === descDisplay.textContent.trim()) {
+                        closeDesc();
+                        return;
+                    }
+                    try {
+                        await patchPhoto({ description });
+                        descDisplay.textContent = displayVal;
+                        updateDescStyle(!!description);
+                        closeDesc();
+                        showStatus("Description saved", false);
+                    } catch (err) {
+                        closeDesc();
+                        showStatus(`Failed: ${err.message}`, true);
+                    }
+                };
+
+                descDisplay.addEventListener("click", openDesc);
+                descInput.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        saveDescription();
+                    }
+                    if (e.key === "Escape") closeDesc();
+                });
+                descInput.addEventListener("blur", saveDescription);
+            }
+
+            // --- Collections ---
+            let currentCollections = [...photoCollections];
+            let availableCollections = allCollections.filter(
+                (c) => !currentCollections.some((pc) => pc.id === c.id),
+            );
+
+            function renderCollections() {
+                const tagsEl = document.getElementById("collection-tags");
+                if (!tagsEl) return;
+
+                if (currentCollections.length === 0) {
+                    tagsEl.innerHTML =
+                        '<span id="no-collections-msg" class="text-zinc-500 text-sm">Not in any collections</span>';
+                } else {
+                    tagsEl.innerHTML = currentCollections
+                        .map(
+                            (c) =>
+                                `<span class="collection-tag inline-flex items-center gap-1 px-3 py-1 bg-zinc-800 text-zinc-200 rounded-full text-sm" data-collection-id="${c.id}">
+                            ${c.name}
+                            <button class="remove-collection text-zinc-500 hover:text-red-400 ml-1" data-collection-id="${c.id}" title="Remove from ${c.name}">×</button>
+                        </span>`,
+                        )
+                        .join("");
+                }
+
+                // Update add-to-collection section
+                availableCollections = allCollections.filter(
+                    (c) => !currentCollections.some((pc) => pc.id === c.id),
+                );
+
+                const addContainer = document.getElementById(
+                    "add-collection-container",
+                );
+                if (addContainer) {
+                    if (availableCollections.length === 0) {
+                        addContainer.className = "";
+                        addContainer.innerHTML =
+                            '<p class="text-zinc-500 text-sm">In all available collections</p>';
+                    } else {
+                        addContainer.className = "flex gap-2 items-center";
+                        addContainer.innerHTML =
+                            `<select id="add-collection-select" class="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm focus:outline-none focus:border-zinc-500">${availableCollections.map((c) => `<option value="${c.id}">${c.name}</option>`).join("")}</select>` +
+                            '<button id="add-collection-btn" class="px-4 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded text-sm transition-colors">Add</button>';
+                        // Re-attach add button listener
+                        document
+                            .getElementById("add-collection-btn")
+                            .addEventListener("click", handleAddCollection);
+                    }
+                }
+            }
+
+            // Remove from collection
+            document.addEventListener("click", async (e) => {
+                const btn = e.target.closest(".remove-collection");
+                if (!btn) return;
+                const collectionId = btn.dataset.collectionId;
+                try {
+                    const res = await fetch(
+                        `${apiBase}/admin/images/${photoId}/collections/${collectionId}`,
+                        {
+                            method: "DELETE",
+                            headers: {
+                                Authorization: `Bearer ${ADMIN_API_KEY}`,
+                            },
+                        },
+                    );
+                    if (!res.ok) throw new Error(`Error ${res.status}`);
+                    currentCollections = currentCollections.filter(
+                        (c) => c.id !== parseInt(collectionId, 10),
+                    );
+                    renderCollections();
+                    showStatus("Removed from collection", false);
+                } catch (err) {
+                    showStatus(`Failed: ${err.message}`, true);
+                }
+            });
+
+            // Add to collection
+            async function handleAddCollection() {
+                const selectEl = document.getElementById(
+                    "add-collection-select",
+                );
+                if (!selectEl) return;
+                const collectionId = selectEl.value;
+                try {
+                    const res = await fetch(
+                        `${apiBase}/admin/images/${photoId}/collections/${collectionId}`,
+                        {
+                            method: "POST",
+                            headers: {
+                                Authorization: `Bearer ${ADMIN_API_KEY}`,
+                            },
+                        },
+                    );
+                    if (!res.ok) throw new Error(`Error ${res.status}`);
+                    const added = allCollections.find(
+                        (c) => c.id === parseInt(collectionId, 10),
+                    );
+                    if (added) currentCollections.push(added);
+                    renderCollections();
+                    showStatus("Added to collection", false);
+                } catch (err) {
+                    showStatus(`Failed: ${err.message}`, true);
+                }
+            }
+
+            const addBtn = document.getElementById("add-collection-btn");
+            if (addBtn) {
+                addBtn.addEventListener("click", handleAddCollection);
             }
         </script>
     </body>
