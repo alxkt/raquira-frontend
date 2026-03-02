@@ -5,7 +5,8 @@ import "../../styles/global.css";
 import type { Photo } from "../../lib/photos";
 import { parseSizes, formatAdminDate } from "../../lib/photos";
 
-const ADMIN_PASSWORD = import.meta.env.ADMIN_PASSWORD;
+const runtime = (Astro.locals as any).runtime;
+const ADMIN_PASSWORD = runtime?.env?.ADMIN_PASSWORD ?? import.meta.env.ADMIN_PASSWORD;
 
 // Check if password is configured
 if (!ADMIN_PASSWORD) {
