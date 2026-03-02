@@ -1,6 +1,7 @@
 export interface Photo {
     id: number;
     basename: string;
+    originalRef?: string | null;
     width: number;
     height: number;
     availableSizes: string; // JSON array string
@@ -8,6 +9,7 @@ export interface Photo {
     month?: number | null;
     day?: number | null;
     sequence?: number | null;
+    sequenceRaw?: string | null;
     rotation?: number | null; // 0=normal, 1=90°, 2=180°, 3=270°
     hidden?: boolean;
     description?: string | null;
@@ -55,4 +57,17 @@ export function formatPhotoDate(p: Photo): string {
     if (y && m && d) return new Date(y, m - 1, d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     if (y && m) return new Date(y, m - 1).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
     return String(y);
+}
+
+/** Format date for admin view with ?? for missing parts */
+export function formatAdminDate(p: Photo): string {
+    const year = p.year?.toString() ?? '19??';
+    const month = p.month !== null && p.month !== undefined
+        ? p.month.toString().padStart(2, '0')
+        : '??';
+    const day = p.day !== null && p.day !== undefined
+        ? p.day.toString().padStart(2, '0')
+        : '??';
+
+    return `${month}/${day}/${year}`;
 }

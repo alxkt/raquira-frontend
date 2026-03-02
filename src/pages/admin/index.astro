@@ -2,6 +2,8 @@
 export const prerender = false; // Enable SSR for this page
 
 import "../../styles/global.css";
+import type { Photo } from "../../lib/photos";
+import { parseSizes, formatAdminDate } from "../../lib/photos";
 
 const ADMIN_PASSWORD = import.meta.env.ADMIN_PASSWORD;
 
@@ -34,6 +36,37 @@ if (!isAuthenticated) {
         }
     }
 }
+
+// Fetch photo data if authenticated
+let photo: Photo | null = null;
+let maxImageId = 0;
+let error: string | null = null;
+
+if (isAuthenticated) {
+    const apiBase = import.meta.env.PUBLIC_USE_LOCAL_BACKEND === "true"
+        ? "http://localhost:8080"
+        : import.meta.env.PUBLIC_API_BASE_URL;
+
+    const url = new URL(Astro.request.url);
+    const photoId = parseInt(url.searchParams.get("id") || "1", 10);
+
+    try {
+        // Fetch stats to get max ID
+        const statsRes = await fetch(`${apiBase}/images/stats`);
+        if (!statsRes.ok) throw new Error(`Stats API returned ${statsRes.status}`);
+        const stats = await statsRes.json();
+        maxImageId = stats.maxImageId;
+
+        // Fetch the specific photo
+        const photoRes = await fetch(`${apiBase}/images/${photoId}`);
+        if (!photoRes.ok) throw new Error(`Photo API returned ${photoRes.status}`);
+        photo = await photoRes.json();
+    } catch (e) {
+        error = e instanceof Error ? e.message : "Failed to fetch photo";
+    }
+}
+
+const imageBaseURL = import.meta.env.PUBLIC_IMAGE_BASE_URL;
 ---
 
 <!doctype html>
@@ -123,34 +156,143 @@ if (!isAuthenticated) {
                 </div>
             ) : (
                 <div class="p-8">
-                    <header class="mb-8">
-                        <h1
-                            class="text-red-50 text-3xl md:text-4xl font-bold mb-4"
-                            style="font-family: 'Poppins', sans-serif;"
-                        >
-                            Admin Dashboard
-                        </h1>
-                        <p class="text-zinc-400 text-sm">
-                            Authenticated successfully
-                        </p>
-                    </header>
-
-                    <div class="flex gap-4">
-                        <a
-                            href="/"
-                            class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-lg text-sm transition-colors"
-                        >
-                            View Site
-                        </a>
-                        <form method="POST" action="/admin/logout">
-                            <button
-                                type="submit"
+                    <header class="mb-8 flex justify-between items-start">
+                        <div>
+                            <h1
+                                class="text-red-50 text-3xl md:text-4xl font-bold mb-4"
+                                style="font-family: 'Poppins', sans-serif;"
+                            >
+                                Admin Dashboard
+                            </h1>
+                            {photo && (
+                                <p class="text-zinc-400 text-sm">
+                                    Photo {photo.id} / {maxImageId}
+                                </p>
+                            )}
+                        </div>
+                        <div class="flex gap-4">
+                            <a
+                                href="/"
                                 class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-lg text-sm transition-colors"
                             >
-                                Logout
-                            </button>
-                        </form>
-                    </div>
+                                View Site
+                            </a>
+                            <form method="POST" action="/admin/logout">
+                                <button
+                                    type="submit"
+                                    class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-lg text-sm transition-colors"
+                                >
+                                    Logout
+                                </button>
+                            </form>
+                        </div>
+                    </header>
+
+                    {error && (
+                        <div class="bg-red-900/20 border border-red-800 text-red-300 px-4 py-3 rounded-lg mb-8">
+                            Error: {error}
+                        </div>
+                    )}
+
+                    {photo && (
+                        <div>
+                            {/* Navigation */}
+                            <div class="flex gap-4 mb-8">
+                                <a
+                                    href={`/admin?id=${Math.max(1, photo.id - 1)}`}
+                                    class={`px-6 py-2 rounded-lg text-sm transition-colors ${
+                                        photo.id === 1
+                                            ? "bg-zinc-900 text-zinc-600 cursor-not-allowed"
+                                            : "bg-zinc-800 hover:bg-zinc-700 text-zinc-100"
+                                    }`}
+                                    aria-disabled={photo.id === 1}
+                                >
+                                    ← Previous
+                                </a>
+                                <a
+                                    href={`/admin?id=${Math.min(maxImageId, photo.id + 1)}`}
+                                    class={`px-6 py-2 rounded-lg text-sm transition-colors ${
+                                        photo.id === maxImageId
+                                            ? "bg-zinc-900 text-zinc-600 cursor-not-allowed"
+                                            : "bg-zinc-800 hover:bg-zinc-700 text-zinc-100"
+                                    }`}
+                                    aria-disabled={photo.id === maxImageId}
+                                >
+                                    Next →
+                                </a>
+                            </div>
+
+                            {/* Photo and Data Grid */}
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {/* Photo Preview */}
+                                <div class="bg-zinc-900 rounded-lg p-4">
+                                    <img
+                                        src={`${imageBaseURL}/${photo.basename}_960w.jpg`}
+                                        alt={photo.description || `Photo ${photo.id}`}
+                                        class="w-full h-auto rounded"
+                                        style={`transform: rotate(${(photo.rotation || 0) * 90}deg);`}
+                                    />
+                                </div>
+
+                                {/* Photo Data Table */}
+                                <div class="bg-zinc-900 rounded-lg p-6">
+                                    <h2 class="text-zinc-100 text-xl font-semibold mb-4" style="font-family: 'Poppins', sans-serif;">
+                                        Photo Data
+                                    </h2>
+                                    <table class="w-full text-sm">
+                                        <tbody class="divide-y divide-zinc-800">
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">ID</td>
+                                                <td class="py-3 text-zinc-100">{photo.id}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">Basename</td>
+                                                <td class="py-3 text-zinc-100 font-mono text-xs">{photo.basename}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">Original Ref</td>
+                                                <td class="py-3 text-zinc-100 font-mono text-xs">{photo.originalRef || "—"}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">Dimensions</td>
+                                                <td class="py-3 text-zinc-100">{photo.width} × {photo.height}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">Available Sizes</td>
+                                                <td class="py-3 text-zinc-100 font-mono text-xs">{parseSizes(photo.availableSizes).join(", ")}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">Date</td>
+                                                <td class="py-3 text-zinc-100 font-mono">{formatAdminDate(photo)}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">Sequence</td>
+                                                <td class="py-3 text-zinc-100">{photo.sequence ?? "—"}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">Sequence Raw</td>
+                                                <td class="py-3 text-zinc-100 font-mono text-xs">{photo.sequenceRaw || "—"}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">Rotation</td>
+                                                <td class="py-3 text-zinc-100">
+                                                    {photo.rotation ?? 0} ({(photo.rotation || 0) * 90}°)
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">Hidden</td>
+                                                <td class="py-3 text-zinc-100">{photo.hidden ? "Yes" : "No"}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 text-zinc-400 font-medium">Description</td>
+                                                <td class="py-3 text-zinc-100">{photo.description || "—"}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )
         }
