@@ -166,7 +166,18 @@ const imageBaseURL = import.meta.env.PUBLIC_IMAGE_BASE_URL;
                             </h1>
                             {photo && (
                                 <p class="text-zinc-400 text-sm">
-                                    Photo {photo.id} / {maxImageId}
+                                    Photo <span
+                                        id="photo-id-display"
+                                        class="underline decoration-dotted cursor-pointer hover:text-zinc-200 transition-colors"
+                                        title="Click to jump to ID"
+                                    >{photo.id}</span> / {maxImageId}
+                                    <input
+                                        id="photo-id-input"
+                                        type="number"
+                                        min="1"
+                                        max={maxImageId}
+                                        class="hidden w-16 bg-zinc-800 border border-zinc-600 rounded px-1 text-zinc-100 text-sm focus:outline-none focus:border-zinc-400"
+                                    />
                                 </p>
                             )}
                         </div>
@@ -296,5 +307,40 @@ const imageBaseURL = import.meta.env.PUBLIC_IMAGE_BASE_URL;
                 </div>
             )
         }
+        <script is:inline define:vars={{ maxImageId }}>
+            const display = document.getElementById('photo-id-display');
+            const input = document.getElementById('photo-id-input');
+
+            if (display && input) {
+                display.addEventListener('click', () => {
+                    input.value = display.textContent.trim();
+                    display.classList.add('hidden');
+                    input.classList.remove('hidden');
+                    input.focus();
+                    input.select();
+                });
+
+                const commit = () => {
+                    const val = parseInt(input.value, 10);
+                    if (!isNaN(val) && val >= 1 && val <= maxImageId) {
+                        window.location.href = `/admin?id=${val}`;
+                    } else {
+                        cancel();
+                    }
+                };
+
+                const cancel = () => {
+                    input.classList.add('hidden');
+                    display.classList.remove('hidden');
+                };
+
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') commit();
+                    if (e.key === 'Escape') cancel();
+                });
+
+                input.addEventListener('blur', cancel);
+            }
+        </script>
     </body>
 </html>
