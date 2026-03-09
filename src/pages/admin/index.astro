@@ -238,7 +238,7 @@ const apiBase =
                     {photo && (
                         <div>
                             {/* Navigation */}
-                            <div class="flex gap-4 mb-8">
+                            <div class="flex gap-4 mb-8 items-center">
                                 <a
                                     href={`/admin?id=${Math.max(1, photo.id - 1)}`}
                                     class={`px-6 py-2 rounded-lg text-sm transition-colors ${
@@ -261,6 +261,24 @@ const apiBase =
                                 >
                                     Next →
                                 </a>
+                                <div class="ml-auto flex gap-2 items-center">
+                                    <input
+                                        id="basename-input"
+                                        type="text"
+                                        placeholder="Basename"
+                                        class="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-600 focus:border-transparent w-48"
+                                    />
+                                    <button
+                                        id="basename-go"
+                                        class="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded-lg text-sm transition-colors"
+                                    >
+                                        Go
+                                    </button>
+                                    <span
+                                        id="basename-error"
+                                        class="text-red-400 text-sm hidden"
+                                    />
+                                </div>
                             </div>
 
                             {/* Photo and Data Grid */}
@@ -353,7 +371,8 @@ const apiBase =
                                                         class={`underline decoration-dotted cursor-pointer transition-colors ${photo.sequence != null ? "text-zinc-100 hover:text-zinc-200" : "text-zinc-500 italic hover:text-zinc-400"}`}
                                                         title="Click to edit"
                                                     >
-                                                        {photo.sequence ?? "No sequence"}
+                                                        {photo.sequence ??
+                                                            "No sequence"}
                                                     </span>
                                                     <input
                                                         type="number"
@@ -909,6 +928,44 @@ const apiBase =
             const addBtn = document.getElementById("add-collection-btn");
             if (addBtn) {
                 addBtn.addEventListener("click", handleAddCollection);
+            }
+
+            // --- Basename Lookup ---
+            const basenameInput = document.getElementById("basename-input");
+            const basenameGo = document.getElementById("basename-go");
+            const basenameError = document.getElementById("basename-error");
+
+            async function lookupBasename() {
+                const basename = basenameInput?.value.trim();
+                if (!basename) return;
+                basenameError.classList.add("hidden");
+                try {
+                    const res = await fetch(
+                        `${apiBase}/images/basename/${encodeURIComponent(basename)}`,
+                    );
+                    if (!res.ok) {
+                        basenameError.textContent =
+                            res.status === 404
+                                ? "Not found"
+                                : `Error ${res.status}`;
+                        basenameError.classList.remove("hidden");
+                        return;
+                    }
+                    const photo = await res.json();
+                    window.location.href = `/admin?id=${photo.id}`;
+                } catch (err) {
+                    basenameError.textContent = "Request failed";
+                    basenameError.classList.remove("hidden");
+                }
+            }
+
+            if (basenameGo) {
+                basenameGo.addEventListener("click", lookupBasename);
+            }
+            if (basenameInput) {
+                basenameInput.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") lookupBasename();
+                });
             }
         </script>
     </body>
