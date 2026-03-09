@@ -34,7 +34,7 @@ try {
             ? "http://localhost:8080"
             : import.meta.env.PUBLIC_API_BASE_URL;
     collection = await fetchCollectionBySlug(API_BASE_URL, slug!);
-    photos = collection.photos;
+    photos = collection.photos ?? [];
 } catch (e) {
     console.error("Collection fetch failed", e);
 }
